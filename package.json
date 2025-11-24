@@ -2,7 +2,7 @@
   "name": "antigravity-quota-watcher",
   "displayName": "Antigravity Quota Watcher",
   "description": "实时监控 Antigravity的模型使用配额",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "publisher": "antigravity-tools",
   "engines": {
     "vscode": "^1.85.0"
@@ -58,25 +58,7 @@
           "description": "状态栏显示样式",
           "order": 30
         },
-        "antigravityQuotaWatcher.showPromptCredits": {
-          "type": "boolean",
-          "default": false,
-          "description": "在状态栏显示 Prompt Credits",
-          "order": 31
-        },
-        "antigravityQuotaWatcher.warningThreshold": {
-          "type": "number",
-          "default": 50,
-          "description": "警告阈值（百分比），低于此值状态栏显示橙色",
-          "order": 40
-        },
-        "antigravityQuotaWatcher.criticalThreshold": {
-          "type": "number",
-          "default": 30,
-          "description": "临界阈值（百分比），低于此值状态栏显示红色",
-          "order": 41
-        },
-        "antigravityQuotaWatcher.apiMethod": {
+        "antigravityQuotaWatcher.apiCallMode": {
           "type": "string",
           "default": "auto",
           "enum": [
