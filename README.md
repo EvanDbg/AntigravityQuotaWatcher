@@ -15,6 +15,12 @@
 
 ![Demo 2](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo2.png)
 
+## 使用方法
+
+[下载插件](https://github.com/wusimpl/AntigravityQuotaWatcher/releases/tag/V0.7.0)，然后安装插件，重启 Antigravity
+
+![Installation](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/install.png)
+
 ##  功能特点
 
 - **实时监控**：自动检测并定时轮询配额使用情况
@@ -59,11 +65,6 @@
 - **说明**：使用 PowerShell 模式检测进程
 - **适用场景**：如果在 Windows 系统上遇到端口检测错误，可以尝试启用此选项切换到 PowerShell 模式。插件重启生效。
 
-## 使用方法
-
-[下载插件](https://github.com/wusimpl/AntigravityQuotaWatcher/releases/tag/V0.7.0)，然后安装插件，重启 Antigravity
-
-![Installation](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/install.png)
 
 ### 命令面板
 
