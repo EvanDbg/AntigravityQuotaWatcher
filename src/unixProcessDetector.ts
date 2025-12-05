@@ -14,6 +14,23 @@ export class UnixProcessDetector implements IPlatformStrategy {
     }
 
     /**
+     * 判断命令行是否属于 Antigravity 进程
+     * 通过 --app_data_dir antigravity 或路径中包含 antigravity 来识别
+     */
+    private isAntigravityProcess(commandLine: string): boolean {
+        const lowerCmd = commandLine.toLowerCase();
+        // 检查 --app_data_dir antigravity 参数
+        if (/--app_data_dir\s+antigravity\b/i.test(commandLine)) {
+            return true;
+        }
+        // 检查路径中是否包含 antigravity
+        if (lowerCmd.includes('/antigravity/') || lowerCmd.includes('\\antigravity\\')) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Get command to list Unix processes using ps and grep.
      */
     getProcessListCommand(processName: string): string {
@@ -57,7 +74,8 @@ export class UnixProcessDetector implements IPlatformStrategy {
             const portMatch = cmd.match(/--extension_server_port[=\s]+(\d+)/);
             const tokenMatch = cmd.match(/--csrf_token[=\s]+([a-f0-9\-]+)/i);
 
-            if (tokenMatch && tokenMatch[1]) {
+            // 必须同时满足：有 csrf_token 且是 Antigravity 进程
+            if (tokenMatch && tokenMatch[1] && this.isAntigravityProcess(cmd)) {
                 const extensionPort = portMatch && portMatch[1] ? parseInt(portMatch[1], 10) : 0;
                 const csrfToken = tokenMatch[1];
                 candidates.push({ pid, ppid, extensionPort, csrfToken });
