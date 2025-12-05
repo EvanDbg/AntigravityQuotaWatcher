@@ -6,7 +6,7 @@
 import { IPlatformStrategy } from './platformDetector';
 
 export class WindowsProcessDetector implements IPlatformStrategy {
-    private usePowerShell: boolean = false;
+    private usePowerShell: boolean = true;
 
     /**
      * 设置是否使用 PowerShell 模式
@@ -127,28 +127,48 @@ export class WindowsProcessDetector implements IPlatformStrategy {
         }
 
         // 解析 WMIC 输出格式
-        // 先检查是否是 Antigravity 进程
-        if (!this.isAntigravityProcess(stdout)) {
+        // WMIC 输出格式为多个进程块，每个块包含 CommandLine= 和 ProcessId= 行
+        // 需要按进程分组处理，避免混淆不同进程的参数
+        const blocks = stdout.split(/\n\s*\n/).filter(block => block.trim().length > 0);
+        
+        const candidates: Array<{ pid: number; extensionPort: number; csrfToken: string }> = [];
+        
+        for (const block of blocks) {
+            const pidMatch = block.match(/ProcessId=(\d+)/);
+            const commandLineMatch = block.match(/CommandLine=(.+)/);
+            
+            if (!pidMatch || !commandLineMatch) {
+                continue;
+            }
+            
+            const commandLine = commandLineMatch[1].trim();
+            
+            // 检查是否是 Antigravity 进程
+            if (!this.isAntigravityProcess(commandLine)) {
+                continue;
+            }
+            
+            const portMatch = commandLine.match(/--extension_server_port[=\s]+(\d+)/);
+            const tokenMatch = commandLine.match(/--csrf_token[=\s]+([a-f0-9\-]+)/i);
+            
+            if (!tokenMatch || !tokenMatch[1]) {
+                continue;
+            }
+            
+            const pid = parseInt(pidMatch[1], 10);
+            const extensionPort = portMatch && portMatch[1] ? parseInt(portMatch[1], 10) : 0;
+            const csrfToken = tokenMatch[1];
+            
+            candidates.push({ pid, extensionPort, csrfToken });
+        }
+        
+        if (candidates.length === 0) {
+            console.log('[WindowsProcessDetector] WMIC: No Antigravity process found');
             return null;
         }
-
-        const portMatch = stdout.match(/--extension_server_port[=\s]+(\d+)/);
-        const tokenMatch = stdout.match(/--csrf_token[=\s]+([a-f0-9\-]+)/i);
-        const pidMatch = stdout.match(/ProcessId=(\d+)/);
-
-        if (!pidMatch || !pidMatch[1]) {
-            return null;
-        }
-
-        if (!tokenMatch || !tokenMatch[1]) {
-            return null;
-        }
-
-        const pid = parseInt(pidMatch[1], 10);
-        const extensionPort = portMatch && portMatch[1] ? parseInt(portMatch[1], 10) : 0;
-        const csrfToken = tokenMatch[1];
-
-        return { pid, extensionPort, csrfToken };
+        
+        console.log(`[WindowsProcessDetector] WMIC: Found ${candidates.length} Antigravity process(es), using PID: ${candidates[0].pid}`);
+        return candidates[0];
     }
 
     /**

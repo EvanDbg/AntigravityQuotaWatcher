@@ -89,12 +89,11 @@ export class PlatformDetector {
 
                 // 读取用户配置，检查是否强制使用 PowerShell 模式
                 const config = vscode.workspace.getConfiguration('antigravityQuotaWatcher');
-                const forcePowerShell = config.get<boolean>('forcePowerShell', false);
+                const forcePowerShell = config.get<boolean>('forcePowerShell', true);
 
-                if (forcePowerShell) {
-                    console.log('🔧 Configuration: forcePowerShell is enabled, using PowerShell mode');
-                    windowsDetector.setUsePowerShell(true);
-                }
+                // 根据配置设置模式
+                windowsDetector.setUsePowerShell(forcePowerShell);
+                console.log(`🔧 Configuration: forcePowerShell=${forcePowerShell}, using ${forcePowerShell ? 'PowerShell' : 'WMIC'} mode`);
 
                 return windowsDetector;
             case 'darwin':
