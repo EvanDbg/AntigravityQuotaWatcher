@@ -61,9 +61,9 @@
   - `COMMAND_MODEL_CONFIG`：兼容模式，信息量较少
 
 ### PowerShell 模式（仅 Windows 系统可用）
-- **默认值**：`false`
+- **默认值**：`true`，如果false，则使用wmic检测进程
 - **说明**：使用 PowerShell 模式检测进程
-- **适用场景**：如果在 Windows 系统上遇到端口检测错误，可以尝试启用此选项切换到 PowerShell 模式。插件重启生效。
+- **适用场景**：如果在 Windows 系统上遇到端口检测错误，可以尝试切换此选项。插件重启生效。
 
 
 ### 命令面板

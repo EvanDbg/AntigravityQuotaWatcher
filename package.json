@@ -2,7 +2,7 @@
   "name": "antigravity-quota-watcher",
   "displayName": "Antigravity Quota Watcher",
   "description": "实时监控 Antigravity的模型使用配额",
-  "version": "0.7.1",
+  "version": "0.7.3",
   "publisher": "antigravity-tools",
   "icon": "icon.png",
   "engines": {
@@ -89,7 +89,7 @@
         },
         "antigravityQuotaWatcher.forcePowerShell": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "使用 PowerShell 模式检测进程【仅 Windows系统可用，插件重启生效】",
           "order": 75
         }
