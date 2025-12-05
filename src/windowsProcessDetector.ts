@@ -38,6 +38,23 @@ export class WindowsProcessDetector implements IPlatformStrategy {
     }
 
     /**
+     * 判断命令行是否属于 Antigravity 进程
+     * 通过 --app_data_dir antigravity 或路径中包含 antigravity 来识别
+     */
+    private isAntigravityProcess(commandLine: string): boolean {
+        const lowerCmd = commandLine.toLowerCase();
+        // 检查 --app_data_dir antigravity 参数
+        if (/--app_data_dir\s+antigravity\b/i.test(commandLine)) {
+            return true;
+        }
+        // 检查路径中是否包含 antigravity
+        if (lowerCmd.includes('\\antigravity\\') || lowerCmd.includes('/antigravity/')) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Parse process output to extract process information.
      * 支持 WMIC 和 PowerShell 两种输出格式
      * 
@@ -58,12 +75,32 @@ export class WindowsProcessDetector implements IPlatformStrategy {
         if (this.usePowerShell || stdout.trim().startsWith('{') || stdout.trim().startsWith('[')) {
             try {
                 let data = JSON.parse(stdout.trim());
-                // 如果是数组,取第一个元素
+                // 如果是数组,筛选出 Antigravity 进程
                 if (Array.isArray(data)) {
                     if (data.length === 0) {
                         return null;
                     }
-                    data = data[0];
+                    const totalCount = data.length;
+                    // 过滤出 Antigravity 进程
+                    const antigravityProcesses = data.filter((item: any) => 
+                        item.CommandLine && this.isAntigravityProcess(item.CommandLine)
+                    );
+                    console.log(`[WindowsProcessDetector] Found ${totalCount} language_server process(es), ${antigravityProcesses.length} belong to Antigravity`);
+                    if (antigravityProcesses.length === 0) {
+                        console.log('[WindowsProcessDetector] No Antigravity process found, skipping non-Antigravity processes');
+                        return null;
+                    }
+                    if (totalCount > 1) {
+                        console.log(`[WindowsProcessDetector] Selected Antigravity process PID: ${antigravityProcesses[0].ProcessId}`);
+                    }
+                    data = antigravityProcesses[0];
+                } else {
+                    // 单个对象时也要检查是否是 Antigravity 进程
+                    if (!data.CommandLine || !this.isAntigravityProcess(data.CommandLine)) {
+                        console.log('[WindowsProcessDetector] Single process found but not Antigravity, skipping');
+                        return null;
+                    }
+                    console.log(`[WindowsProcessDetector] Found 1 Antigravity process, PID: ${data.ProcessId}`);
                 }
 
                 const commandLine = data.CommandLine || '';
@@ -90,6 +127,11 @@ export class WindowsProcessDetector implements IPlatformStrategy {
         }
 
         // 解析 WMIC 输出格式
+        // 先检查是否是 Antigravity 进程
+        if (!this.isAntigravityProcess(stdout)) {
+            return null;
+        }
+
         const portMatch = stdout.match(/--extension_server_port[=\s]+(\d+)/);
         const tokenMatch = stdout.match(/--csrf_token[=\s]+([a-f0-9\-]+)/i);
         const pidMatch = stdout.match(/ProcessId=(\d+)/);
