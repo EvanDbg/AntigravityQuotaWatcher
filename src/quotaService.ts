@@ -1,6 +1,6 @@
 import * as https from "https";
 import * as http from "http";
-import { UserStatusResponse, QuotaSnapshot, PromptCreditsInfo, ModelQuotaInfo } from "./types";
+import { UserStatusResponse, QuotaSnapshot, PromptCreditsInfo, ModelQuotaInfo, ModelConfig } from "./types";
 
 // API 方法枚举
 export enum QuotaApiMethod {
@@ -8,10 +8,87 @@ export enum QuotaApiMethod {
   GET_USER_STATUS = 'GET_USER_STATUS'
 }
 
+// 通用请求配置
+interface RequestConfig {
+  path: string;
+  body: object;
+  timeout?: number;
+}
+
+// 通用请求方法
+async function makeRequest(
+  config: RequestConfig,
+  port: number,
+  httpPort: number | undefined,
+  csrfToken: string | undefined
+): Promise<any> {
+  const requestBody = JSON.stringify(config.body);
+
+  const headers: Record<string, string | number> = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(requestBody),
+    'Connect-Protocol-Version': '1'
+  };
+
+  if (csrfToken) {
+    headers['X-Codeium-Csrf-Token'] = csrfToken;
+  } else {
+    throw new Error('Missing CSRF token');
+  }
+
+  const doRequest = (useHttps: boolean, targetPort: number) => new Promise((resolve, reject) => {
+    const options: https.RequestOptions = {
+      hostname: '127.0.0.1',
+      port: targetPort,
+      path: config.path,
+      method: 'POST',
+      headers,
+      rejectUnauthorized: false,
+      timeout: config.timeout ?? 5000
+    };
+
+    console.log(`Request URL: ${useHttps ? 'https' : 'http'}://127.0.0.1:${targetPort}${config.path}`);
+
+    const client = useHttps ? https : http;
+    const req = client.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP error: ${res.statusCode}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(data));
+        } catch (error) {
+          reject(new Error(`Failed to parse response: ${error}`));
+        }
+      });
+    });
+
+    req.on('error', (error) => reject(error));
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
+    req.write(requestBody);
+    req.end();
+  });
+
+  // 先尝试 HTTPS，失败后回退到 HTTP
+  try {
+    return await doRequest(true, port);
+  } catch (error: any) {
+    const msg = (error?.message || '').toLowerCase();
+    const shouldRetryHttp = httpPort !== undefined && (error.code === 'EPROTO' || msg.includes('wrong_version_number'));
+    if (shouldRetryHttp) {
+      console.warn('HTTPS failed; trying HTTP fallback port:', httpPort);
+      return await doRequest(false, httpPort);
+    }
+    throw error;
+  }
+}
+
 export class QuotaService {
   private readonly GET_USER_STATUS_PATH = '/exa.language_server_pb.LanguageServerService/GetUserStatus';
   private readonly COMMAND_MODEL_CONFIG_PATH = '/exa.language_server_pb.LanguageServerService/GetCommandModelConfigs';
-  private readonly GET_UNLEASH_DATA_PATH = '/exa.language_server_pb.LanguageServerService/GetUnleashData';
 
   // 重试配置
   private readonly MAX_RETRY_COUNT = 3;
@@ -25,11 +102,11 @@ export class QuotaService {
   private updateCallback?: (snapshot: QuotaSnapshot) => void;
   private errorCallback?: (error: Error) => void;
   private statusCallback?: (status: 'fetching' | 'retrying', retryCount?: number) => void;
-  private loginStatusCallback?: (isLoggedIn: boolean) => void;
   private isFirstAttempt: boolean = true;
   private consecutiveErrors: number = 0;
   private retryCount: number = 0;
   private isRetrying: boolean = false;
+  private isPollingTransition: boolean = false;  // 轮询状态切换锁，防止竞态条件
   private csrfToken?: string;
   private apiMethod: QuotaApiMethod = QuotaApiMethod.GET_USER_STATUS;
 
@@ -74,17 +151,24 @@ export class QuotaService {
     this.statusCallback = callback;
   }
 
-  onLoginStatusChange(callback: (isLoggedIn: boolean) => void): void {
-    this.loginStatusCallback = callback;
-  }
+  async startPolling(intervalMs: number): Promise<void> {
+    // 防止快速连续调用导致多个定时器
+    if (this.isPollingTransition) {
+      console.log('[QuotaService] Polling transition in progress, skipping...');
+      return;
+    }
 
-  startPolling(intervalMs: number): void {
-    console.log(`[QuotaService] Starting polling loop every ${intervalMs}ms`);
-    this.stopPolling();
-    this.fetchQuota();
-    this.pollingInterval = setInterval(() => {
-      this.fetchQuota();
-    }, intervalMs);
+    this.isPollingTransition = true;
+    try {
+      console.log(`[QuotaService] Starting polling loop every ${intervalMs}ms`);
+      this.stopPolling();
+      await this.fetchQuota();
+      this.pollingInterval = setInterval(() => {
+        this.fetchQuota();
+      }, intervalMs);
+    } finally {
+      this.isPollingTransition = false;
+    }
   }
 
   stopPolling(): void {
@@ -250,258 +334,42 @@ export class QuotaService {
     }
   }
 
-  /**
-   * 检查用户登录状态
-   * 通过 GetUnleashData API 检测，如果响应中包含 userId 则表示已登录
-   */
-  private async checkLoginStatus(): Promise<boolean> {
-    try {
-      const response = await this.makeGetUnleashDataRequest();
-
-      // 打印完整响应
-      console.log('Full GetUnleashData response:', JSON.stringify(response, null, 2));
-
-      // 检查响应中是否包含 userId
-      const userId = response?.context?.userId;
-      const hasUserId = userId !== undefined && userId !== null && userId !== '';
-
-      console.log(`Login status check: ${hasUserId ? 'Logged in' : 'Not logged in'}`);
-      if (hasUserId) {
-        console.log(`User ID: ${userId?.substring(0, 20)}...`);
-      }
-
-      return hasUserId;
-    } catch (error: any) {
-      console.error('Login status check failed:', error.message);
-      // 如果检测失败，假设未登录
-      return false;
-    }
-  }
-
-  /**
-   * 调用 GetUnleashData API
-   */
-  private async makeGetUnleashDataRequest(): Promise<any> {
-    const requestBody = JSON.stringify({
-      ideName: "antigravity",
-      locale: "en",
-      ideVersion: "1.11.2",
-      extensionName: "antigravity"
-    });
-
-    const headers: any = {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(requestBody),
-      'Connect-Protocol-Version': '1'
-    };
-
-    if (this.csrfToken) {
-      headers['X-Codeium-Csrf-Token'] = this.csrfToken;
-    } else {
-      throw new Error('Missing CSRF token');
-    }
-
-    const doRequest = (useHttps: boolean, port: number) => new Promise((resolve, reject) => {
-      const options: any = {
-        hostname: '127.0.0.1',
-        port,
-        path: this.GET_UNLEASH_DATA_PATH,
-        method: 'POST',
-        headers
-      };
-
-      if (useHttps) {
-        options.rejectUnauthorized = false;
-      }
-
-      console.log(`Request URL: ${useHttps ? 'https' : 'http'}://127.0.0.1:${port}${this.GET_UNLEASH_DATA_PATH}`);
-
-      const client = useHttps ? https : http;
-      const req = client.request(options, (res: any) => {
-        let data = '';
-        res.on('data', (chunk: any) => { data += chunk; });
-        res.on('end', () => {
-          if (res.statusCode !== 200) {
-            reject(new Error(`HTTP error: ${res.statusCode}`));
-            return;
-          }
-          try {
-            resolve(JSON.parse(data));
-          } catch (error) {
-            reject(new Error(`Failed to parse response: ${error}`));
-          }
-        });
-      });
-
-      req.on('error', (error: any) => reject(error));
-      req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
-      req.setTimeout(5000);
-      req.write(requestBody);
-      req.end();
-    });
-
-    try {
-      return await doRequest(true, this.port);
-    } catch (error: any) {
-      const msg = (error?.message || '').toLowerCase();
-      const shouldRetryHttp = this.httpPort !== undefined && (error.code === 'EPROTO' || msg.includes('wrong_version_number'));
-      if (shouldRetryHttp) {
-        console.warn('HTTPS failed; trying HTTP fallback port:', this.httpPort);
-        return await doRequest(false, this.httpPort!);
-      }
-      throw error;
-    }
-  }
-
   private async makeGetUserStatusRequest(): Promise<any> {
-    const requestBody = JSON.stringify({
-      metadata: {
-        ideName: 'antigravity',
-        extensionName: 'antigravity',
-        locale: 'en'
-      }
-    });
-
-    const headers: any = {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(requestBody),
-      'Connect-Protocol-Version': '1'
-    };
-
-    if (this.csrfToken) {
-      headers['X-Codeium-Csrf-Token'] = this.csrfToken;
-      console.log('Using CSRF token:', this.csrfToken.substring(0, 4) + '...');
-    } else {
-      throw new Error('Missing CSRF token');
-    }
-
-    const doRequest = (useHttps: boolean, port: number) => new Promise((resolve, reject) => {
-      const options: any = {
-        hostname: '127.0.0.1',
-        port,
+    console.log('Using CSRF token:', this.csrfToken ? '[present]' : '[missing]');
+    return makeRequest(
+      {
         path: this.GET_USER_STATUS_PATH,
-        method: 'POST',
-        headers
-      };
-
-      if (useHttps) {
-        options.rejectUnauthorized = false;
-      }
-
-      console.log(`Request URL: ${useHttps ? 'https' : 'http'}://127.0.0.1:${port}${this.GET_USER_STATUS_PATH}`);
-      // console.log('请求头:', JSON.stringify(headers, null, 2));
-      // console.log('请求体:', requestBody);
-
-      const client = useHttps ? https : http;
-      const req = client.request(options, (res: any) => {
-        let data = '';
-        res.on('data', (chunk: any) => { data += chunk; });
-        res.on('end', () => {
-          if (res.statusCode !== 200) {
-            reject(new Error(`HTTP error: ${res.statusCode}`));
-            return;
+        body: {
+          metadata: {
+            ideName: 'antigravity',
+            extensionName: 'antigravity',
+            locale: 'en'
           }
-          try {
-            resolve(JSON.parse(data));
-          } catch (error) {
-            reject(new Error(`Failed to parse response: ${error}`));
-          }
-        });
-      });
-
-      req.on('error', (error: any) => reject(error));
-      req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
-      req.setTimeout(5000);
-      req.write(requestBody);
-      req.end();
-    });
-
-    try {
-      return await doRequest(true, this.port);
-    } catch (error: any) {
-      const msg = (error?.message || '').toLowerCase();
-      const shouldRetryHttp = this.httpPort !== undefined && (error.code === 'EPROTO' || msg.includes('wrong_version_number'));
-      if (shouldRetryHttp) {
-        console.warn('HTTPS failed; trying HTTP fallback port:', this.httpPort);
-        return await doRequest(false, this.httpPort!);
-      }
-      throw error;
-    }
+        }
+      },
+      this.port,
+      this.httpPort,
+      this.csrfToken
+    );
   }
 
   private async makeCommandModelConfigsRequest(): Promise<any> {
-    const requestBody = JSON.stringify({
-      metadata: {
-        ideName: 'antigravity',
-        extensionName: 'antigravity',
-        locale: 'en'
-      }
-    });
-
-    const headers: any = {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(requestBody),
-      'Connect-Protocol-Version': '1'
-    };
-
-    if (this.csrfToken) {
-      headers['X-Codeium-Csrf-Token'] = this.csrfToken;
-      console.log('Using CSRF token:', this.csrfToken.substring(0, 4) + '...');
-    } else {
-      throw new Error('Missing CSRF token');
-    }
-
-    const doRequest = (useHttps: boolean, port: number) => new Promise((resolve, reject) => {
-      const options: any = {
-        hostname: '127.0.0.1',
-        port,
+    console.log('Using CSRF token:', this.csrfToken ? '[present]' : '[missing]');
+    return makeRequest(
+      {
         path: this.COMMAND_MODEL_CONFIG_PATH,
-        method: 'POST',
-        headers
-      };
-      if (useHttps) {
-        options.rejectUnauthorized = false;
-      }
-
-      console.log(`Request URL: ${useHttps ? 'https' : 'http'}://127.0.0.1:${port}${this.COMMAND_MODEL_CONFIG_PATH}`);
-      console.log('Request headers:', JSON.stringify(headers, null, 2));
-      console.log('Request body:', requestBody);
-
-      const client = useHttps ? https : http;
-      const req = client.request(options, (res: any) => {
-        let data = '';
-        res.on('data', (chunk: any) => { data += chunk; });
-        res.on('end', () => {
-          if (res.statusCode !== 200) {
-            reject(new Error(`HTTP error: ${res.statusCode}`));
-            return;
+        body: {
+          metadata: {
+            ideName: 'antigravity',
+            extensionName: 'antigravity',
+            locale: 'en'
           }
-          try {
-            resolve(JSON.parse(data));
-          } catch (error) {
-            reject(new Error(`Failed to parse response: ${error}`));
-          }
-        });
-      });
-
-      req.on('error', (error: any) => reject(error));
-      req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
-      req.setTimeout(5000);
-      req.write(requestBody);
-      req.end();
-    });
-
-    try {
-      return await doRequest(true, this.port);
-    } catch (error: any) {
-      const msg = (error?.message || '').toLowerCase();
-      const shouldRetryHttp = this.httpPort !== undefined && (error.code === 'EPROTO' || msg.includes('wrong_version_number'));
-      if (shouldRetryHttp) {
-        console.warn('HTTPS failed; trying HTTP fallback port:', this.httpPort);
-        return await doRequest(false, this.httpPort!);
-      }
-      throw error;
-    }
+        }
+      },
+      this.port,
+      this.httpPort,
+      this.csrfToken
+    );
   }
 
   private parseCommandModelConfigsResponse(response: any): QuotaSnapshot {

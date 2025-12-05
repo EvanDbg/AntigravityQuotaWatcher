@@ -180,11 +180,18 @@ export class WindowsProcessDetector implements IPlatformStrategy {
 
     /**
      * Parse netstat output to extract listening ports.
-     * Expected format:
+     * Expected formats:
      *   TCP    127.0.0.1:2873         0.0.0.0:0              LISTENING       4412
+     *   TCP    0.0.0.0:2873           0.0.0.0:0              LISTENING       4412
+     *   TCP    [::1]:2873             [::]:0                 LISTENING       4412
+     *   TCP    [::]:2873              [::]:0                 LISTENING       4412
+     *   TCP    127.0.0.1:2873         *:*                    LISTENING       4412
      */
     parseListeningPorts(stdout: string): number[] {
-        const portRegex = /127\.0\.0\.1:(\d+)\s+0\.0\.0\.0:0\s+LISTENING/g;
+        // Match IPv4: 127.0.0.1:port, 0.0.0.0:port
+        // Match IPv6: [::1]:port, [::]:port
+        // Foreign address can be: 0.0.0.0:0, *:*, [::]:0, etc.
+        const portRegex = /(?:127\.0\.0\.1|0\.0\.0\.0|\[::1?\]):(\d+)\s+\S+\s+LISTENING/gi;
         const ports: number[] = [];
         let match;
 

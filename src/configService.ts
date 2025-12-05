@@ -15,7 +15,7 @@ export class ConfigService {
     const config = vscode.workspace.getConfiguration(this.configKey);
     return {
       enabled: config.get<boolean>('enabled', true),
-      pollingInterval: (config.get<number>('pollingInterval', 60) || 60) * 1000,
+      pollingInterval: Math.max(10, config.get<number>('pollingInterval', 60)) * 1000,
       warningThreshold: config.get<number>('warningThreshold', 50),
       criticalThreshold: config.get<number>('criticalThreshold', 30),
       apiMethod: (config.get<string>('apiMethod', 'GET_USER_STATUS') as Config['apiMethod']),

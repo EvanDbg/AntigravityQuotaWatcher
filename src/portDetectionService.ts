@@ -34,14 +34,14 @@ export class PortDetectionService {
         const processInfo: AntigravityProcessInfo | null = await this.processDetector.detectProcessInfo();
 
         if (!processInfo) {
-            console.error('❌ Failed to get port and CSRF Token from process.');
-            console.error('   Ensure language_server_windows_x64.exe is running.');
+            console.error('[PortDetectionService] Failed to get port and CSRF Token from process.');
+            console.error('[PortDetectionService] Ensure language_server_windows_x64.exe is running.');
             return null;
         }
 
-        console.log(`✅ Detected Connect port (HTTPS): ${processInfo.connectPort}`);
-        console.log(`✅ Detected extension port (HTTP): ${processInfo.extensionPort}`);
-        console.log(`✅ Detected CSRF Token: ${processInfo.csrfToken.substring(0, 8)}...`);
+        console.log(`[PortDetectionService] Detected Connect port (HTTPS): ${processInfo.connectPort}`);
+        console.log(`[PortDetectionService] Detected extension port (HTTP): ${processInfo.extensionPort}`);
+        console.log(`[PortDetectionService] Detected CSRF Token: ${processInfo.csrfToken.substring(0, 8)}...`);
 
         return {
             // keep compatibility: port is the primary connect port

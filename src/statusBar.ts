@@ -130,7 +130,10 @@ export class StatusBarService {
       lines.push('');
     }
 
-    for (const model of snapshot.models) {
+    // 按模型名称字母顺序排序，使同类模型连续显示
+    const sortedModels = [...snapshot.models].sort((a, b) => a.label.localeCompare(b.label));
+
+    for (const model of sortedModels) {
       const emoji = this.getModelEmoji(model.label);
       lines.push(`${emoji} ${model.label}`);
 
@@ -210,14 +213,8 @@ export class StatusBarService {
     if (label.includes('Flash')) {
       return 'Flash';
     }
-    if (label.includes('Pro (High)')) {
-      return 'Pro-H';
-    }
-    if (label.includes('Pro (Low)')) {
-      return 'Pro-L';
-    }
-    if (label.includes('Pro')) {
-      return 'Pro';
+    if (label.includes('Pro (High)') || label.includes('Pro (Low)') || label.includes('Pro')) {
+      return 'Gemini';
     }
     if (label.includes('GPT')) {
       return 'GPT';

@@ -43,17 +43,17 @@ export class ProcessPortDetector {
     if (platformName === 'Windows') {
       const windowsStrategy = this.platformStrategy as any;
       const mode = windowsStrategy.isUsingPowerShell?.() ? 'PowerShell' : 'WMIC';
-      console.log(`🔧 Windows detection mode: ${mode}`);
+      console.log(`[PortDetector] Windows detection mode: ${mode}`);
     }
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🔍 Attempting to detect Antigravity process (${platformName}, try ${attempt}/${maxRetries})...`);
+        console.log(`[PortDetector] Attempting to detect Antigravity process (${platformName}, try ${attempt}/${maxRetries})...`);
 
         // Fetch full command line for the language server process using platform-specific command
         const command = this.platformStrategy.getProcessListCommand(this.processName);
         console.log(`[PortDetector] Running process list command: ${command}`);
-        const { stdout } = await execAsync(command, { timeout: 5000 });
+        const { stdout } = await execAsync(command, { timeout: 15000 });
         const preview = stdout.trim().split('\n').slice(0, 3).join('\n');
         console.log(`[PortDetector] Process command output preview:\n${preview || '(empty)'}`);
 
@@ -61,62 +61,62 @@ export class ProcessPortDetector {
         const processInfo = this.platformStrategy.parseProcessInfo(stdout);
 
         if (!processInfo) {
-          console.warn(`⚠️ Attempt ${attempt}: ${errorMessages.processNotFound}`);
+          console.warn(`[PortDetector] Attempt ${attempt}: ${errorMessages.processNotFound}`);
           throw new Error(errorMessages.processNotFound);
         }
 
         const { pid, extensionPort, csrfToken } = processInfo;
 
-        console.log('✅ Found process info:');
-        console.log(`   PID: ${pid}`);
-        console.log(`   extension_server_port: ${extensionPort || '(not found)'}`);
-        console.log(`   CSRF Token: ${csrfToken.substring(0, 8)}...`);
+        console.log('[PortDetector] Found process info:');
+        console.log(`[PortDetector]   PID: ${pid}`);
+        console.log(`[PortDetector]   extension_server_port: ${extensionPort || '(not found)'}`);
+        console.log(`[PortDetector]   CSRF Token: ${csrfToken ? '[present]' : '[missing]'}`);
 
         // 获取该进程监听的所有端口
-        console.log(`🔍 Fetching listening ports for PID ${pid}...`);
+        console.log(`[PortDetector] Fetching listening ports for PID ${pid}...`);
         const listeningPorts = await this.getProcessListeningPorts(pid);
 
         if (listeningPorts.length === 0) {
-          console.warn(`⚠️ Attempt ${attempt}: process is not listening on any ports`);
+          console.warn(`[PortDetector] Attempt ${attempt}: process is not listening on any ports`);
           throw new Error('Process is not listening on any ports');
         }
 
-        console.log(`✅ Found ${listeningPorts.length} listening ports: ${listeningPorts.join(', ')}`);
+        console.log(`[PortDetector] Found ${listeningPorts.length} listening ports: ${listeningPorts.join(', ')}`);
 
         // 逐个测试端口，找到能响应 API 的端口
-        console.log('🔍 Testing port connectivity...');
+        console.log('[PortDetector] Testing port connectivity...');
         const connectPort = await this.findWorkingPort(listeningPorts, csrfToken);
 
         if (!connectPort) {
-          console.warn(`⚠️ Attempt ${attempt}: all port tests failed`);
+          console.warn(`[PortDetector] Attempt ${attempt}: all port tests failed`);
           throw new Error('Unable to find a working API port');
         }
 
-        console.log(`✅ Attempt ${attempt} succeeded!`);
-        console.log(`✅ API port (HTTPS): ${connectPort}`);
+        console.log(`[PortDetector] Attempt ${attempt} succeeded`);
+        console.log(`[PortDetector] API port (HTTPS): ${connectPort}`);
         console.log(`[PortDetector] Detection summary: extension_port=${extensionPort}, connect_port=${connectPort}`);
 
         return { extensionPort, connectPort, csrfToken };
 
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
-        console.error(`❌ Attempt ${attempt} failed:`, errorMsg);
+        console.error(`[PortDetector] Attempt ${attempt} failed:`, errorMsg);
         if (error?.stack) {
-          console.error('   Stack:', error.stack);
+          console.error('[PortDetector]   Stack:', error.stack);
         }
 
         // 提供更具体的错误提示
         if (errorMsg.includes('timeout')) {
-          console.error('   Reason: command execution timed out; the system may be under heavy load');
+          console.error('[PortDetector]   Reason: command execution timed out; the system may be under heavy load');
         } else if (errorMsg.includes('not found') || errorMsg.includes('not recognized') || errorMsg.includes('不是内部或外部命令')) {
-          console.error(`   Reason: ${errorMessages.commandNotAvailable}`);
+          console.error(`[PortDetector]   Reason: ${errorMessages.commandNotAvailable}`);
 
           // Windows 平台特殊处理:WMIC 降级到 PowerShell
           if (this.platformDetector.getPlatformName() === 'Windows') {
             const windowsStrategy = this.platformStrategy as any;
             if (windowsStrategy.setUsePowerShell && !windowsStrategy.isUsingPowerShell()) {
-              console.warn('⚠️ WMIC command is unavailable (Windows 10 21H1+/Windows 11 deprecated WMIC)');
-              console.log('🔄 Switching to PowerShell mode and retrying...');
+              console.warn('[PortDetector] WMIC command is unavailable (Windows 10 21H1+/Windows 11 deprecated WMIC)');
+              console.log('[PortDetector] Switching to PowerShell mode and retrying...');
               windowsStrategy.setUsePowerShell(true);
 
               // 不消耗重试次数,直接重试当前尝试
@@ -129,15 +129,15 @@ export class ProcessPortDetector {
 
       // 如果还有重试机会,等待后重试
       if (attempt < maxRetries) {
-        console.log(`⏳ Waiting ${retryDelay}ms before retrying...`);
+        console.log(`[PortDetector] Waiting ${retryDelay}ms before retrying...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
     }
 
-    console.error(`❌ All ${maxRetries} attempts failed`);
-    console.error('   Please ensure:');
+    console.error(`[PortDetector] All ${maxRetries} attempts failed`);
+    console.error('[PortDetector] Please ensure:');
     errorMessages.requirements.forEach((req, index) => {
-      console.error(`   ${index + 1}. ${req}`);
+      console.error(`[PortDetector]   ${index + 1}. ${req}`);
     });
 
     return null;
@@ -169,13 +169,13 @@ export class ProcessPortDetector {
   private async findWorkingPort(ports: number[], csrfToken: string): Promise<number | null> {
     console.log(`[PortDetector] Candidate ports for testing: ${ports.join(', ') || '(none)'}`);
     for (const port of ports) {
-      console.log(`  🔍 Testing port ${port}...`);
+      console.log(`[PortDetector]   Testing port ${port}...`);
       const isWorking = await this.testPortConnectivity(port, csrfToken);
       if (isWorking) {
-        console.log(`  ✅ Port ${port} test succeeded!`);
+        console.log(`[PortDetector]   Port ${port} test succeeded`);
         return port;
       } else {
-        console.log(`  ❌ Port ${port} test failed`);
+        console.log(`[PortDetector]   Port ${port} test failed`);
       }
     }
     return null;

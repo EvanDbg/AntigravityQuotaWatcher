@@ -93,7 +93,7 @@ export class PlatformDetector {
 
                 // 根据配置设置模式
                 windowsDetector.setUsePowerShell(forcePowerShell);
-                console.log(`🔧 Configuration: forcePowerShell=${forcePowerShell}, using ${forcePowerShell ? 'PowerShell' : 'WMIC'} mode`);
+                console.log(`[PlatformDetector] Configuration: forcePowerShell=${forcePowerShell}, using ${forcePowerShell ? 'PowerShell' : 'WMIC'} mode`);
 
                 return windowsDetector;
             case 'darwin':

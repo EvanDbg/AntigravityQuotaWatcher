@@ -13,6 +13,7 @@ let quotaService: QuotaService | undefined;
 let statusBarService: StatusBarService | undefined;
 let configService: ConfigService | undefined;
 let portDetectionService: PortDetectionService | undefined;
+let configChangeTimer: NodeJS.Timeout | undefined;  // 配置变更防抖定时器
 
 /**
  * Called when the extension is activated
@@ -23,7 +24,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Init services
   configService = new ConfigService();
   let config = configService.getConfig();
-  console.log('[Extension] Loaded config:', config);
+  // console.log('[Extension] Loaded config:', config);
 
   portDetectionService = new PortDetectionService(context);
 
@@ -43,7 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
   let detectionResult: PortDetectionResult | null = null;
 
   try {
-    console.log('[Extension] Starting initial port detection run');
+    console.log('[Extension] Starting initial port detection');
     const result = await portDetectionService.detectPort();
     if (result) {
       detectionResult = result;
@@ -52,7 +53,7 @@ export async function activate(context: vscode.ExtensionContext) {
       console.log('[Extension] Initial port detection success:', detectionResult);
     }
   } catch (error) {
-    console.error('Port/CSRF detection failed', error);
+    console.error('❌ Port/CSRF detection failed', error);
     if (error instanceof Error && error.stack) {
       console.error('Stack:', error.stack);
     }
@@ -62,12 +63,12 @@ export async function activate(context: vscode.ExtensionContext) {
   if (!detectedPort || !detectedCsrfToken) {
     console.error('Missing port or CSRF Token, extension cannot start');
     console.error('Please ensure Antigravity language server is running');
-    statusBarService.showError('Detection failed');
+    statusBarService.showError('Port/CSRF Detection failed, Please try restart.');
     statusBarService.show();
 
     // 显示用户提示,提供重试选项
     vscode.window.showWarningMessage(
-      'Antigravity Quota Watcher: Unable to detect the Antigravity process. Please verify your Google account is signed in.',
+      'Antigravity Quota Watcher: Unable to detect the Antigravity process.',
       'Retry',
       'Cancel'
     ).then(action => {
@@ -105,14 +106,6 @@ export async function activate(context: vscode.ExtensionContext) {
         statusBarService?.showFetching();
       } else if (status === 'retrying' && retryCount !== undefined) {
         statusBarService?.showRetrying(retryCount, 3); // MAX_RETRY_COUNT = 3
-      }
-    });
-
-    // Register login status callback
-    quotaService.onLoginStatusChange((isLoggedIn: boolean) => {
-      if (!isLoggedIn) {
-        console.log('User is not logged in to Antigravity');
-        statusBarService?.showNotLoggedIn();
       }
     });
 
@@ -245,14 +238,6 @@ export async function activate(context: vscode.ExtensionContext) {
               statusBarService?.showError(`Connection failed: ${error.message}`);
             });
 
-            quotaService.onLoginStatusChange((isLoggedIn: boolean) => {
-              if (!isLoggedIn) {
-                console.log('User is not logged in to Antigravity');
-                statusBarService?.showNotLoggedIn();
-              } else {
-                console.log('User login state confirmed for Antigravity');
-              }
-            });
           } else {
             // 更新现有服务的端口
             quotaService.setPorts(result.connectPort, result.httpPort);
@@ -311,28 +296,35 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 /**
- * Handle config changes
+ * Handle config changes with debounce to prevent race conditions
  */
 function handleConfigChange(config: Config): void {
-  console.log('Config updated', config);
-
-  quotaService?.setApiMethod(config.apiMethod === 'COMMAND_MODEL_CONFIG'
-    ? QuotaApiMethod.COMMAND_MODEL_CONFIG
-    : QuotaApiMethod.GET_USER_STATUS);
-  statusBarService?.setWarningThreshold(config.warningThreshold);
-  statusBarService?.setCriticalThreshold(config.criticalThreshold);
-  statusBarService?.setShowPromptCredits(config.showPromptCredits);
-  statusBarService?.setDisplayStyle(config.displayStyle);
-
-  if (config.enabled) {
-    quotaService?.startPolling(config.pollingInterval);
-    statusBarService?.show();
-  } else {
-    quotaService?.stopPolling();
-    statusBarService?.hide();
+  // 防抖：300ms 内的多次变更只执行最后一次
+  if (configChangeTimer) {
+    clearTimeout(configChangeTimer);
   }
 
-  vscode.window.showInformationMessage('Antigravity Quota Watcher config updated');
+  configChangeTimer = setTimeout(() => {
+    console.log('Config updated (debounced)', config);
+
+    quotaService?.setApiMethod(config.apiMethod === 'COMMAND_MODEL_CONFIG'
+      ? QuotaApiMethod.COMMAND_MODEL_CONFIG
+      : QuotaApiMethod.GET_USER_STATUS);
+    statusBarService?.setWarningThreshold(config.warningThreshold);
+    statusBarService?.setCriticalThreshold(config.criticalThreshold);
+    statusBarService?.setShowPromptCredits(config.showPromptCredits);
+    statusBarService?.setDisplayStyle(config.displayStyle);
+
+    if (config.enabled) {
+      quotaService?.startPolling(config.pollingInterval);
+      statusBarService?.show();
+    } else {
+      quotaService?.stopPolling();
+      statusBarService?.hide();
+    }
+
+    vscode.window.showInformationMessage('Antigravity Quota Watcher config updated');
+  }, 300);
 }
 
 /**
