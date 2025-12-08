@@ -21,6 +21,14 @@
 
 ![Installation](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/install.png)
 
+## 提交Issue
+
+请在提交issue时附上日志文件或者日志截图
+日志导出方法：
+![步骤页面1](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue1.png)
+![步骤页面2](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue2.png)
+
+
 ##  功能特点
 
 - **实时监控**：自动检测并定时轮询配额使用情况
