@@ -24,6 +24,7 @@
 ## 提交Issue
 
 请在提交issue时附上日志文件或者日志截图
+
 日志导出方法：
 ![步骤页面1](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue1.png)
 ![步骤页面2](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue2.png)
@@ -59,8 +60,9 @@
 ### 状态栏显示样式
 - **默认值**：`progressBar`
 - **选项**：
-  - `progressBar`：显示进度条
-  - `percentage`：显示百分比
+  - `progressBar`：显示进度条（如 `████░░░░`）
+  - `percentage`：显示百分比（如 `80%`）
+  - `dots`：显示圆点（如 `●●●○○`）
 - **说明**：选择状态栏的显示风格
 
 ### API 方法选择
@@ -72,6 +74,15 @@
 - **默认值**：`true`，如果false，则使用wmic检测进程
 - **说明**：使用 PowerShell 模式检测进程
 - **适用场景**：如果在 Windows 系统上遇到端口检测错误，可以尝试切换此选项。插件重启生效。
+
+### 语言设置
+- **默认值**：`auto`
+- **选项**：
+  - `auto`：自动跟随 VS Code 语言设置
+  - `en`：英语
+  - `zh-cn`：简体中文
+- **说明**：设置状态栏语言，默认自动跟随 VS Code 语言
+> 如果要更改配置设置页面的显示语言，需要将antigravity的语言设置为中文
 
 
 ### 命令面板
@@ -94,9 +105,11 @@
 显示格式：`🟢 Pro-L: 80% | 🔴 Claude: 25%`
 直接显示剩余配额的百分比数值。
 
-每个模型前会显示状态指示符号和进度条：
+### 3. 圆点模式
+显示格式：`🟢 Pro-L ●●●●○ | 🔴 Claude ●●○○○`
+使用圆点直观表示剩余配额比例，更加简洁美观。
 
-### 状态指示符号
+#### 状态指示符号
 
 每个模型前的圆点符号表示当前配额状态：
 
