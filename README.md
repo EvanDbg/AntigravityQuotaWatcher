@@ -134,7 +134,7 @@
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=wusimpl/AntigravityQuotaWatcher&type=Date)](https://star-history.com/#wusimpl/AntigravityQuotaWatcher&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=wusimpl/AntigravityQuotaWatcher&type=date&legend=top-left)](https://www.star-history.com/#wusimpl/AntigravityQuotaWatcher&type=date&legend=top-left)
 
 ## 许可证
 
