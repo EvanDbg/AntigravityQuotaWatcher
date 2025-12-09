@@ -1,4 +1,4 @@
-# Antigravity Quota Watcher
+# <img src="./icon.png" width="80" style="vertical-align: middle"> Antigravity Quota Watcher
 
 >
 > This plugin is an unofficial tool and has no affiliation with Antigravity.

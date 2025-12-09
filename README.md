@@ -1,4 +1,4 @@
-# Antigravity Quota Watcher
+# <img src="./icon.png" width="80" style="vertical-align: middle"> Antigravity Quota Watcher
 
 #### Choose Your Language:  简体中文 | [English](./README.en.md)
 
