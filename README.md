@@ -23,8 +23,6 @@
   </tr>
 </table>
 
----
-
 ## 系统要求
 
 ![Windows](https://img.shields.io/badge/Windows--amd64-supported-brightgreen?logo=microsoftwindows&logoColor=white)
