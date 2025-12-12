@@ -22,8 +22,6 @@
   </tr>
 </table>
 
----
-
 ## System Requirements
 
 ![Windows](https://img.shields.io/badge/Windows--amd64-supported-brightgreen?logo=microsoftwindows&logoColor=white)
