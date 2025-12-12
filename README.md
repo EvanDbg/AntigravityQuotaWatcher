@@ -14,11 +14,15 @@
   <tr>
     <td align="center">
       <strong>状态栏显示</strong><br><br>
-      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png" alt="状态栏显示" width="400">
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png" alt="状态栏显示" width="300">
     </td>
     <td align="center">
       <strong>配额详情</strong><br><br>
       <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo2.png" alt="配额详情" width="400">
+    </td>
+    <td align="center">
+      <strong>配置页面</strong><br><br>
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo3.png" alt="配置页面" width="400">
     </td>
   </tr>
 </table>
