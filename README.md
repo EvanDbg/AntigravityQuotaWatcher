@@ -7,16 +7,33 @@
 > 本插件依赖于 Antigravity 语言服务器的内部实现细节，相关机制可能会随时变动。
 
 
+** 一个在Antigravity状态栏实时显示AI模型配额剩余情况的插件 **
+
+---
+
+### 演示
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>状态栏显示</strong><br><br>
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png" alt="状态栏显示" width="400">
+    </td>
+    <td align="center">
+      <strong>配额详情</strong><br><br>
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo2.png" alt="配额详情" width="400">
+    </td>
+  </tr>
+</table>
+
+---
+
+## 系统要求
+
 ![Windows](https://img.shields.io/badge/Windows--amd64-supported-brightgreen?logo=microsoftwindows&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-supported-brightgreen?logo=apple&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-supported-brightgreen?logo=linux&logoColor=white)
 ![Windows ARM](https://img.shields.io/badge/Windows--arm64-not%20supported-red?logo=microsoftwindows&logoColor=white)
-
-一个用于监控 Antigravity AI 模型使用配额的 VS Code 插件，配额信息在底部状态栏显示。
-
-![Demo 1](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png)
-
-![Demo 2](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo2.png)
 
 ## 使用方法
 

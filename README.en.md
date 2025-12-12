@@ -5,16 +5,33 @@
 > This plugin relies on internal implementation details of the Antigravity language server, which may change at any time.
 
 
+** A plugin that displays AI model quota status in real-time in the Antigravity status bar.**
+
+---
+
+###  Demo
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>Status Bar Display</strong><br><br>
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png" alt="Status Bar Display" width="400">
+    </td>
+    <td align="center">
+      <strong>Quota Details</strong><br><br>
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo2-en.png" alt="Quota Details" width="400">
+    </td>
+  </tr>
+</table>
+
+---
+
+## System Requirements
+
 ![Windows](https://img.shields.io/badge/Windows--amd64-supported-brightgreen?logo=microsoftwindows&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-supported-brightgreen?logo=apple&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-supported-brightgreen?logo=linux&logoColor=white)
 ![Windows ARM](https://img.shields.io/badge/Windows--arm64-not%20supported-red?logo=microsoftwindows&logoColor=white)
-
-A VS Code extension for monitoring Antigravity AI model usage quotas, with quota information displayed in the bottom status bar.
-
-![Demo 1](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png)
-
-![Demo 2](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo2-en.png)
 
 ## Installation
 
