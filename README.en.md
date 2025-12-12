@@ -13,11 +13,15 @@
   <tr>
     <td align="center">
       <strong>Status Bar Display</strong><br><br>
-      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png" alt="Status Bar Display" width="400">
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo1.png" alt="Status Bar Display" width="300">
     </td>
     <td align="center">
       <strong>Quota Details</strong><br><br>
       <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo2-en.png" alt="Quota Details" width="400">
+    </td>
+    <td align="center">
+      <strong>Config Page</strong><br><br>
+      <img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/demo3.png" alt="Config Page" width="400">
     </td>
   </tr>
 </table>
