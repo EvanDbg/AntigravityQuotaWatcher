@@ -5,7 +5,7 @@
 > This plugin relies on internal implementation details of the Antigravity language server, which may change at any time.
 
 
-** A plugin that displays AI model quota status in real-time in the Antigravity status bar.**
+**A plugin that displays AI model quota status in real-time in the Antigravity status bar.**
 
 ---
 
