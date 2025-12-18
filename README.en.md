@@ -97,6 +97,14 @@ Open VS Code settings (`File` > `Preferences` > `Settings`), and search for `Ant
 - **Description**: Use PowerShell mode to detect processes
 - **Use Case**: If you encounter port detection errors on Windows, try toggling this option. Requires plugin restart to take effect.
 
+### Show Gemini Pro (G Pro) Quota
+- **Default**: `true`
+- **Description**: Whether to display Gemini Pro quota in the status bar
+
+### Show Gemini Flash (G Flash) Quota
+- **Default**: `true`
+- **Description**: Whether to display Gemini Flash quota in the status bar
+
 ### Language Settings
 - **Default**: `auto`
 - **Options**:
