@@ -30,10 +30,10 @@ export class WindowsProcessDetector implements IPlatformStrategy {
     getProcessListCommand(processName: string): string {
         if (this.usePowerShell) {
             // PowerShell 命令:使用 Get-CimInstance 获取进程信息并输出 JSON
-            return `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"name='${processName}'\\" | Select-Object ProcessId,CommandLine | ConvertTo-Json"`;
+            return `C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"name='${processName}'\\" | Select-Object ProcessId,CommandLine | ConvertTo-Json"`;
         } else {
             // WMIC 命令(传统方式)
-            return `wmic process where "name='${processName}'" get ProcessId,CommandLine /format:list`;
+            return `C:\\Windows\\System32\\wbem\\wmic.exe process where "name='${processName}'" get ProcessId,CommandLine /format:list`;
         }
     }
 
@@ -184,7 +184,7 @@ export class WindowsProcessDetector implements IPlatformStrategy {
      * Get command to list ports for a specific process using netstat.
      */
     getPortListCommand(pid: number): string {
-        return `netstat -ano | findstr "${pid}" | findstr "LISTENING"`;
+        return `C:\\Windows\\System32\\netstat.exe -ano | C:\\Windows\\System32\\findstr.exe "${pid}" | C:\\Windows\\System32\\findstr.exe "LISTENING"`;
     }
 
     /**
