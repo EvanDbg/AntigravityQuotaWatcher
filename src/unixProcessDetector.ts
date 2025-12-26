@@ -94,7 +94,8 @@ export class UnixProcessDetector implements IPlatformStrategy {
         // -ww: unlimited width (avoid truncation)
         // -e: select all processes
         // -o: user-defined format
-        return `ps -ww -eo pid,ppid,args | grep "${processName}" | grep -v grep`;
+        // grep -v graftcp: exclude graftcp wrapper processes (users may use graftcp to proxy language_server)
+        return `ps -ww -eo pid,ppid,args | grep "${processName}" | grep -v grep | grep -v graftcp`;
     }
 
     parseProcessInfo(stdout: string): {
@@ -124,6 +125,14 @@ export class UnixProcessDetector implements IPlatformStrategy {
             const cmd = parts.slice(2).join(' ');
 
             if (isNaN(pid) || isNaN(ppid)) {
+                continue;
+            }
+
+            // 防御性检查：跳过 graftcp 包装进程
+            // graftcp 是用于代理 language_server 的工具，它本身不监听端口
+            // 命令行格式如：/opt/graftcp/graftcp /path/to/language_server_linux_x64.bak ...
+            const executable = parts[2]; // 命令行第一部分（可执行文件）
+            if (executable.includes('graftcp')) {
                 continue;
             }
 
