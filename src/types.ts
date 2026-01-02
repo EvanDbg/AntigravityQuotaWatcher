@@ -33,6 +33,12 @@ export interface UserStatusResponse {
     cascadeModelConfigData?: {
       clientModelConfigs: ModelConfig[];
     };
+    // 账号级别信息（如 Free、Pro）
+    userTier?: {
+      id: string;
+      name: string;
+      description: string;
+    };
   };
 }
 

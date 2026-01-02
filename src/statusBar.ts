@@ -175,7 +175,9 @@ export class StatusBarService {
     md.isTrusted = true;
     md.supportHtml = true;
 
-    md.appendMarkdown(`${this.localizationService.t('tooltip.title')}\n\n`);
+    // tooltip title 后追加 planName（不受配置控制，始终显示）
+    const titleSuffix = snapshot.planName ? ` (${snapshot.planName})` : '';
+    md.appendMarkdown(`${this.localizationService.t('tooltip.title')}${titleSuffix}\n\n`);
 
     if (this.showPromptCredits && snapshot.promptCredits) {
       md.appendMarkdown(`${this.localizationService.t('tooltip.credits')}\n`);

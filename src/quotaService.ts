@@ -424,7 +424,8 @@ export class QuotaService {
       .filter(config => config.quotaInfo)
       .map(config => this.parseModelQuota(config));
 
-    const planName = planStatus?.planInfo?.planName;
+    // 使用 userTier.name 作为账号级别（如 Free、Pro 等）
+    const planName = userStatus?.userTier?.name;
 
     return {
       timestamp: new Date(),
