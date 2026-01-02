@@ -8,7 +8,7 @@
     "config.apiMethod": "API Method: GET_USER_STATUS (Full) or COMMAND_MODEL_CONFIG (Lite)",
     "config.warningThreshold": "Warning threshold (%)",
     "config.criticalThreshold": "Critical threshold (%)",
-    "config.showPlanName": "Show plan name in status bar (not officially enabled yet)",
+    "config.showPlanName": "Show account tier in status bar (e.g., Free, Pro)",
     "config.showGeminiPro": "Show Gemini Pro (G Pro) quota in status bar",
     "config.showGeminiFlash": "Show Gemini Flash (G Flash) quota in status bar",
     "config.showPromptCredits": "Show Prompt Credits (not officially enabled yet)",

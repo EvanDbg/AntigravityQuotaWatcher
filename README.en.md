@@ -117,6 +117,10 @@ Open VS Code settings (`File` > `Preferences` > `Settings`), and search for `Ant
 - **Default**: `true`
 - **Description**: Whether to display Gemini Flash quota in the status bar
 
+### Show Account Tier
+- **Default**: `false`
+- **Description**: Whether to display account tier in the status bar (e.g., Free, Pro)
+
 ### Language Settings
 - **Default**: `auto`
 - **Options**:
