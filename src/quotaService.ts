@@ -189,6 +189,22 @@ export class QuotaService {
   }
 
   async startPolling(intervalMs: number): Promise<void> {
+    // GOOGLE_API 模式：未登录或 token 过期时不启动轮询，避免无意义请求
+    if (this.apiMethod === QuotaApiMethod.GOOGLE_API) {
+      const authState = this.googleAuthService.getAuthState();
+      if (authState.state === AuthState.NOT_AUTHENTICATED || authState.state === AuthState.TOKEN_EXPIRED) {
+        console.log('[QuotaService] Polling skipped: Google auth required');
+        if (this.authStatusCallback) {
+          this.authStatusCallback(true, authState.state === AuthState.TOKEN_EXPIRED);
+        }
+        this.stopPolling();
+        this.consecutiveErrors = 0;
+        this.retryCount = 0;
+        this.isRetrying = false;
+        return;
+      }
+    }
+
     // 防止快速连续调用导致多个定时器
     if (this.isPollingTransition) {
       console.log('[QuotaService] Polling transition in progress, skipping...');
@@ -371,6 +387,21 @@ export class QuotaService {
         console.error('Stack:', error.stack);
       }
 
+      // GOOGLE_API 模式：认证问题时直接停止轮询，等待用户重新登录，不进入重试
+      if (this.apiMethod === QuotaApiMethod.GOOGLE_API && this.isAuthError(error)) {
+        console.log('Google API: Auth issue detected, stopping polling until login');
+        if (this.authStatusCallback) {
+          const message = (error?.message || '').toLowerCase();
+          const isExpired = message.includes('expired') || message.includes('invalid_grant');
+          this.authStatusCallback(true, isExpired);
+        }
+        this.stopPolling();
+        this.isRetrying = false;
+        this.retryCount = 0;
+        this.isFirstAttempt = false;
+        return;
+      }
+
       // GOOGLE_API 方法: 网络错误/超时时设置过时标志，不停止轮询
       if (this.apiMethod === QuotaApiMethod.GOOGLE_API) {
         const isNetworkError = this.isNetworkOrTimeoutError(error);
@@ -431,6 +462,17 @@ export class QuotaService {
       error?.code === 'ECONNRESET' ||
       error?.code === 'ETIMEDOUT'
     );
+  }
+
+  /**
+   * 判断是否为认证相关错误（需要登录/重新登录）
+   */
+  private isAuthError(error: any): boolean {
+    if (error instanceof GoogleApiError && error.needsReauth()) {
+      return true;
+    }
+    const message = (error?.message || '').toLowerCase();
+    return message.includes('not authenticated') || message.includes('unauthorized') || message.includes('invalid_grant');
   }
 
   private async makeGetUserStatusRequest(): Promise<any> {
