@@ -243,6 +243,11 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!currentConfig?.enabled) {
       return;
     }
+    // GOOGLE_API 模式无需焦点刷新，避免多余请求
+    if (getApiMethodFromConfig(currentConfig.apiMethod) === QuotaApiMethod.GOOGLE_API) {
+      console.log('[FocusRefresh] GOOGLE_API mode, skip focus-triggered refresh');
+      return;
+    }
 
     // 检查 quotaService 是否已初始化
     if (!quotaService) {
@@ -278,7 +283,10 @@ export async function activate(context: vscode.ExtensionContext) {
         // 如果当前配置为 GOOGLE_API，刷新配额
         config = configService!.getConfig();
         if (config.apiMethod === 'GOOGLE_API' && quotaService) {
-          quotaService.quickRefresh();
+          if (config.enabled) {
+            await quotaService.startPolling(config.pollingInterval);
+          }
+          await quotaService.quickRefresh();
         }
       } else {
         // 登录失败，显示未登录状态
@@ -297,9 +305,11 @@ export async function activate(context: vscode.ExtensionContext) {
       }
 
       await googleAuthService.logout();
-      // 如果当前配置为 GOOGLE_API，显示未登录状态
+      // 如果当前配置为 GOOGLE_API，立即停止轮询并更新状态栏
       config = configService!.getConfig();
       if (config.apiMethod === 'GOOGLE_API') {
+        quotaService?.stopPolling();
+        statusBarService?.clearStale();
         statusBarService?.showNotLoggedIn();
       }
     }
@@ -315,13 +325,20 @@ export async function activate(context: vscode.ExtensionContext) {
 
     switch (stateInfo.state) {
       case AuthState.AUTHENTICATED:
-        // 登录成功，刷新配额
-        quotaService?.quickRefresh();
+        // 登录成功，刷新配额并恢复轮询
+        if (currentConfig?.enabled) {
+          quotaService?.startPolling(currentConfig.pollingInterval);
+          quotaService?.quickRefresh();
+        }
         break;
       case AuthState.NOT_AUTHENTICATED:
+        quotaService?.stopPolling();
+        statusBarService?.clearStale();
         statusBarService?.showNotLoggedIn();
         break;
       case AuthState.TOKEN_EXPIRED:
+        quotaService?.stopPolling();
+        statusBarService?.clearStale();
         statusBarService?.showLoginExpired();
         break;
       case AuthState.AUTHENTICATING:
