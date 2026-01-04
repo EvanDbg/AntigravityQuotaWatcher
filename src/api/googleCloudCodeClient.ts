@@ -215,7 +215,11 @@ export class GoogleCloudCodeClient {
      * 例如: "gemini-2.5-pro" -> "Gemini 2.5 Pro"
      */
     private formatModelDisplayName(modelName: string): string {
-        return modelName
+        // 先尝试修复版本号格式，将 "3-5" 这种格式转换为 "3.5"
+        // 匹配模式：数字-数字 (例如 claude-3-5-sonnet -> claude-3.5-sonnet)
+        const fixedModelName = modelName.replace(/(\d+)-(\d+)/g, '$1.$2');
+
+        return fixedModelName
             .split('-')
             .map(part => {
                 // 数字部分保持原样
