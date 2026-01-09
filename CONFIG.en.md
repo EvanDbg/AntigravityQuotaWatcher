@@ -72,7 +72,7 @@ If you choose the `GOOGLE_API` method, you need to login with your Google accoun
 - **Description**: Whether to display account tier in the status bar (e.g., Free, Pro)
 
 ## Language Settings
-- **Default**: `auto`
+- **Default**: `zh-cn`
 - **Options**:
   - `auto`: Automatically follow VS Code language settings
   - `en`: English

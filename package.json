@@ -139,7 +139,7 @@
         },
         "antigravityQuotaWatcher.language": {
           "type": "string",
-          "default": "auto",
+          "default": "zh-cn",
           "enum": [
             "auto",
             "en",
