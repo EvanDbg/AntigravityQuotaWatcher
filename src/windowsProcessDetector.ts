@@ -123,7 +123,7 @@ export class WindowsProcessDetector implements IPlatformStrategy {
                 }
 
                 const portMatch = commandLine.match(/--extension_server_port[=\s]+(\d+)/);
-                const tokenMatch = commandLine.match(/--csrf_token[=\s]+([a-f0-9\-]+)/i);
+                const tokenMatch = commandLine.match(/--csrf_token[=\s]+([a-f0-9-]+)/i);
 
                 if (!tokenMatch || !tokenMatch[1]) {
                     return null;
@@ -161,7 +161,7 @@ export class WindowsProcessDetector implements IPlatformStrategy {
             }
 
             const portMatch = commandLine.match(/--extension_server_port[=\s]+(\d+)/);
-            const tokenMatch = commandLine.match(/--csrf_token[=\s]+([a-f0-9\-]+)/i);
+            const tokenMatch = commandLine.match(/--csrf_token[=\s]+([a-f0-9-]+)/i);
 
             if (!tokenMatch || !tokenMatch[1]) {
                 continue;
