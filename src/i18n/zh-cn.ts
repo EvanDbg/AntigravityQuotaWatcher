@@ -63,5 +63,16 @@ export const zh_cn: TranslationMap = {
     'notify.syncToken': '同步',
     'notify.keepCurrentToken': '保持当前',
     'notify.syncLogout': '同步退出',
-    'notify.keepLogin': '保持登录'
+    'notify.keepLogin': '保持登录',
+
+    // 登录成功/错误消息
+    'login.success.google': 'Google 账号登录成功！',
+    'login.success.localToken': '已使用本地 Antigravity 账号登录成功！',
+    'login.error.google': 'Google 登录失败: {error}',
+    'login.error.localToken': '使用本地 Token 登录失败: {error}',
+    'logout.success': '已登出 Google 账号',
+
+    // 开发工具
+    'devTools.previewComplete': '✅ 通知预览完成',
+    'devTools.stop': '停止'
 };

@@ -17,6 +17,7 @@ import {
 } from './constants';
 import { TokenStorage, TokenData } from './tokenStorage';
 import { CallbackServer } from './callbackServer';
+import { LocalizationService } from '../i18n/localizationService';
 
 /**
  * 认证状态枚举
@@ -226,7 +227,7 @@ export class GoogleAuthService {
             console.log('[GoogleAuth] Token saved to secure storage');
 
             this.setState(AuthState.AUTHENTICATED);
-            vscode.window.showInformationMessage('Google 账号登录成功！');
+            vscode.window.showInformationMessage(LocalizationService.getInstance().t('login.success.google'));
             return true;
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
@@ -236,7 +237,7 @@ export class GoogleAuthService {
             }
             this.lastError = errorMessage;
             this.setState(AuthState.ERROR);
-            vscode.window.showErrorMessage(`Google 登录失败: ${errorMessage}`);
+            vscode.window.showErrorMessage(LocalizationService.getInstance().t('login.error.google', { error: errorMessage }));
             return false;
         } finally {
             // 确保服务器已关闭
@@ -307,14 +308,14 @@ export class GoogleAuthService {
             console.log('[GoogleAuth] Token saved to secure storage');
 
             this.setState(AuthState.AUTHENTICATED);
-            vscode.window.showInformationMessage('已使用本地 Antigravity 账号登录成功！');
+            vscode.window.showInformationMessage(LocalizationService.getInstance().t('login.success.localToken'));
             return true;
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
             console.error('[GoogleAuth] Login with refresh_token failed:', errorMessage);
             this.lastError = errorMessage;
             this.setState(AuthState.ERROR);
-            vscode.window.showErrorMessage(`使用本地 Token 登录失败: ${errorMessage}`);
+            vscode.window.showErrorMessage(LocalizationService.getInstance().t('login.error.localToken', { error: errorMessage }));
             return false;
         }
     }

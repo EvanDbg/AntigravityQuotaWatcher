@@ -63,5 +63,16 @@ export const en: TranslationMap = {
     'notify.syncToken': 'Sync',
     'notify.keepCurrentToken': 'Keep current',
     'notify.syncLogout': 'Sync logout',
-    'notify.keepLogin': 'Keep login'
+    'notify.keepLogin': 'Keep login',
+
+    // Login success/error messages
+    'login.success.google': 'Successfully logged in with Google!',
+    'login.success.localToken': 'Successfully logged in with local Antigravity account!',
+    'login.error.google': 'Google login failed: {error}',
+    'login.error.localToken': 'Login with local token failed: {error}',
+    'logout.success': 'Logged out from Google account',
+
+    // Dev tools
+    'devTools.previewComplete': '✅ Notification preview complete',
+    'devTools.stop': 'Stop'
 };

@@ -363,7 +363,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
       const wasLoggedIn = await googleAuthService.logout();
       if (wasLoggedIn) {
-        vscode.window.showInformationMessage('已登出 Google 账号');
+        vscode.window.showInformationMessage(localizationService.t('logout.success'));
       }
       // 如果当前配置为 GOOGLE_API，立即停止轮询并更新状态栏
       config = configService!.getConfig();
