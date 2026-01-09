@@ -334,7 +334,7 @@ export class TokenSyncChecker {
                     // 用户选择同步退出
                     const wasLoggedIn = await googleAuthService.logout();
                     if (wasLoggedIn) {
-                        vscode.window.showInformationMessage('已登出 Google 账号');
+                        vscode.window.showInformationMessage(localizationService.t('logout.success'));
                     }
                     if (onLogout) {
                         onLogout();

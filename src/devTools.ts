@@ -55,10 +55,10 @@ export function registerDevCommands(context: vscode.ExtensionContext) {
                 // 依次显示所有通知
                 for (const n of notifyKeys) {
                     const msg = locService.t(n.key, { port: '12345', error: '示例错误' });
-                    const choice = await showNotification(n.type, `[${n.key}]\n${msg}`, ['下一个', '停止']);
-                    if (choice === '停止') break;
+                    const choice = await showNotification(n.type, `[${n.key}]\n${msg}`, ['下一个', locService.t('devTools.stop')]);
+                    if (choice === locService.t('devTools.stop')) break;
                 }
-                vscode.window.showInformationMessage('✅ 通知预览完成');
+                vscode.window.showInformationMessage(locService.t('devTools.previewComplete'));
             } else {
                 // 显示单个通知
                 const keyMatch = selected.label.match(/notify\.\w+/);

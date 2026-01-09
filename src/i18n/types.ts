@@ -61,7 +61,18 @@ export type TranslationKey =
     | 'notify.syncToken'
     | 'notify.keepCurrentToken'
     | 'notify.syncLogout'
-    | 'notify.keepLogin';
+    | 'notify.keepLogin'
+
+    // Login success/error messages
+    | 'login.success.google'
+    | 'login.success.localToken'
+    | 'login.error.google'
+    | 'login.error.localToken'
+    | 'logout.success'
+
+    // Dev tools
+    | 'devTools.previewComplete'
+    | 'devTools.stop';
 
 export interface TranslationMap {
     [key: string]: string;
