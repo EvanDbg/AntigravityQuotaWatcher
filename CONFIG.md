@@ -33,6 +33,7 @@
   - `GET_USER_STATUS`：本地模式 - 通过本地 Antigravity 语言服务器获取配额，存在较大延迟（因为依赖 LSP）
 - **说明**：选择配额获取方式
 
+
 ### Google API 方式使用说明
 
 > [!WARNING]
