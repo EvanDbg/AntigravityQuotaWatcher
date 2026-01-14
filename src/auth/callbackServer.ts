@@ -5,6 +5,7 @@
 
 import * as http from 'http';
 import { CALLBACK_HOST, CALLBACK_PATH, AUTH_TIMEOUT_MS } from './constants';
+import { logger } from '../logger';
 
 /**
  * OAuth 回调结果
@@ -22,6 +23,8 @@ export class CallbackServer {
   private server: http.Server | null = null;
   private port: number = 0;
   private iconBase64: string | null = null;
+  // 单个请求的超时时间（毫秒）
+  private readonly REQUEST_TIMEOUT_MS = 30000;
 
   /**
    * 设置页面显示的图标 (Base64)
@@ -54,7 +57,7 @@ export class CallbackServer {
         const address = this.server!.address();
         if (typeof address === 'object' && address !== null) {
           this.port = address.port;
-          console.log(`OAuth callback server listening on port ${this.port}`);
+          logger.info('CallbackServer', `OAuth callback server listening on port ${this.port}`);
           resolve();
         } else {
           reject(new Error('Failed to get server address'));
@@ -88,6 +91,12 @@ export class CallbackServer {
 
       // 设置请求处理器
       this.server!.on('request', (req, res) => {
+        // 设置单个请求的超时，防止慢速攻击
+        req.setTimeout(this.REQUEST_TIMEOUT_MS, () => {
+          logger.warn('CallbackServer', 'Request timeout, destroying connection');
+          req.destroy();
+        });
+
         const url = new URL(req.url || '', `http://${CALLBACK_HOST}`);
 
         // 只处理回调路径

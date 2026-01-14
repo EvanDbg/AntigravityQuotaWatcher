@@ -18,5 +18,6 @@
     "config.showGeminiFlash": "在状态栏显示 Gemini Flash (G Flash) 额度",
     "config.showPromptCredits": "显示 Prompt Credits（官方暂未启用此字段）",
     "config.forcePowerShell": "使用 PowerShell 模式检测进程【仅 Windows 系统可用，插件重启生效】",
-    "config.language": "Language / 语言"
+    "config.language": "Language / 语言",
+    "config.logLevel": "日志级别（用于调试）"
 }

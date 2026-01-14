@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Antigravity Quota Watcher - main extension file
  */
 
@@ -12,6 +12,7 @@ import { LocalizationService } from './i18n/localizationService';
 import { versionInfo } from './versionInfo';
 import { registerDevCommands } from './devTools';
 import { GoogleAuthService, AuthState, AuthStateInfo, extractRefreshTokenFromAntigravity, hasAntigravityDb, TokenSyncChecker } from './auth';
+import { logger } from './logger';
 
 const NON_AG_PROMPT_KEY = 'nonAgSwitchPromptDismissed';
 
@@ -35,9 +36,12 @@ let lastAutoRedetectTime: number = 0;
 export async function activate(context: vscode.ExtensionContext) {
   // Initialize and print version info
   versionInfo.initialize(context);
-  console.log(`=== Antigravity Quota Watcher v${versionInfo.getExtensionVersion()} ===`);
-  console.log(`Running on: ${versionInfo.getIdeName()} v${versionInfo.getIdeVersion()}`);
+  logger.info('Extension', `=== Antigravity Quota Watcher v${versionInfo.getExtensionVersion()} ===`);
+  logger.info('Extension', `Running on: ${versionInfo.getIdeName()} v${versionInfo.getIdeVersion()}`);
   globalState = context.globalState;
+
+  // Register logger config change listener
+  context.subscriptions.push(logger.onConfigChange());
 
   // Init services
   configService = new ConfigService();
@@ -110,7 +114,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const quickRefreshQuotaCommand = vscode.commands.registerCommand(
     'antigravity-quota-watcher.quickRefreshQuota',
     async () => {
-      console.log('[Extension] quickRefreshQuota command invoked');
+      logger.debug('Extension', 'quickRefreshQuota command invoked');
       if (!quotaService) {
         // quotaService 未初始化，根据 API 模式给出不同提示
         config = configService!.getConfig();
@@ -118,19 +122,19 @@ export async function activate(context: vscode.ExtensionContext) {
         
         if (currentApiMethod === QuotaApiMethod.GOOGLE_API) {
           // GOOGLE_API 模式下，提示用户需要先登录
-          console.log('[Extension] quotaService not initialized in GOOGLE_API mode, prompt login');
+          logger.debug('Extension', 'quotaService not initialized in GOOGLE_API mode, prompt login');
           vscode.window.showInformationMessage(
             localizationService.t('notify.pleaseLoginFirst') || '请先登录 Google 账号'
           );
         } else {
           // 本地 API 模式，委托给 detectPort 命令进行重新检测
-          console.log('[Extension] quotaService not initialized, delegating to detectPort command');
+          logger.debug('Extension', 'quotaService not initialized, delegating to detectPort command');
           await vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
         }
         return;
       }
 
-      console.log('User triggered quick quota refresh');
+      logger.info('Extension', 'User triggered quick quota refresh');
       // 显示刷新中状态(旋转图标)
       statusBarService?.showQuickRefreshing();
       // 立即刷新一次,不中断轮询
@@ -142,7 +146,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const refreshQuotaCommand = vscode.commands.registerCommand(
     'antigravity-quota-watcher.refreshQuota',
     async () => {
-      console.log('[Extension] refreshQuota command invoked');
+      logger.debug('Extension', 'refreshQuota command invoked');
       if (!quotaService) {
         // quotaService 未初始化，根据 API 模式给出不同提示
         config = configService!.getConfig();
@@ -150,13 +154,13 @@ export async function activate(context: vscode.ExtensionContext) {
         
         if (currentApiMethod === QuotaApiMethod.GOOGLE_API) {
           // GOOGLE_API 模式下，提示用户需要先登录
-          console.log('[Extension] quotaService not initialized in GOOGLE_API mode, prompt login');
+          logger.debug('Extension', 'quotaService not initialized in GOOGLE_API mode, prompt login');
           vscode.window.showInformationMessage(
             localizationService.t('notify.pleaseLoginFirst') || '请先登录 Google 账号'
           );
         } else {
           // 本地 API 模式，委托给 detectPort 命令进行重新检测
-          console.log('[Extension] quotaService not initialized, delegating to detectPort command');
+          logger.debug('Extension', 'quotaService not initialized, delegating to detectPort command');
           await vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
         }
         return;
@@ -185,14 +189,14 @@ export async function activate(context: vscode.ExtensionContext) {
   const detectPortCommand = vscode.commands.registerCommand(
     'antigravity-quota-watcher.detectPort',
     async () => {
-      console.log('[Extension] detectPort command invoked');
+      logger.debug('Extension', 'detectPort command invoked');
 
       config = configService!.getConfig();
       const currentApiMethod = getApiMethodFromConfig(config.apiMethod);
 
       // GOOGLE_API 方法不需要端口检测
       if (currentApiMethod === QuotaApiMethod.GOOGLE_API) {
-        console.log('[Extension] detectPort: GOOGLE_API method does not need port detection');
+        logger.debug('Extension', 'detectPort: GOOGLE_API method does not need port detection');
         vscode.window.showInformationMessage(
           localizationService.t('notify.googleApiNoPortDetection') ||
           'Google API method does not require port detection. Please use Google Login instead.'
@@ -217,11 +221,11 @@ export async function activate(context: vscode.ExtensionContext) {
       statusBarService?.setDisplayStyle(config.displayStyle);
 
       try {
-        console.log('[Extension] detectPort: invoking portDetectionService');
+        logger.debug('Extension', 'detectPort: invoking portDetectionService');
         const result = await portDetectionService?.detectPort();
 
         if (result && result.port && result.csrfToken) {
-          console.log('[Extension] detectPort command succeeded:', result);
+          logger.info('Extension', 'detectPort command succeeded:', result);
           // 如果之前没有 quotaService,需要初始化
           if (!quotaService) {
             quotaService = new QuotaService(result.port, result.csrfToken, result.httpPort);
@@ -233,7 +237,7 @@ export async function activate(context: vscode.ExtensionContext) {
             });
 
             quotaService.onError((error: Error) => {
-              console.error('Quota fetch failed:', error);
+              logger.error('Extension', 'Quota fetch failed:', error);
               statusBarService?.showError(`Connection failed: ${error.message}`);
             });
 
@@ -252,7 +256,7 @@ export async function activate(context: vscode.ExtensionContext) {
             // 更新现有服务的端口
             quotaService.setPorts(result.connectPort, result.httpPort);
             quotaService.setAuthInfo(undefined, result.csrfToken);
-            console.log('[Extension] detectPort: updated existing QuotaService ports');
+            logger.debug('Extension', 'detectPort: updated existing QuotaService ports');
           }
 
           // 清除之前的错误状态
@@ -264,7 +268,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
           vscode.window.showInformationMessage(localizationService.t('notify.detectionSuccess', { port: result.port }));
         } else {
-          console.warn('[Extension] detectPort command did not return valid ports');
+          logger.warn('Extension', 'detectPort command did not return valid ports');
           vscode.window.showErrorMessage(
             localizationService.t('notify.unableToDetectPort') + '\n' +
             localizationService.t('notify.unableToDetectPortHint1') + '\n' +
@@ -273,9 +277,9 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
-        console.error('Port detection failed:', errorMsg);
+        logger.error('Extension', 'Port detection failed:', errorMsg);
         if (error?.stack) {
-          console.error('Stack:', error.stack);
+          logger.error('Extension', 'Stack:', error.stack);
         }
         vscode.window.showErrorMessage(localizationService.t('notify.portDetectionFailed', { error: errorMsg }));
       }
@@ -302,25 +306,25 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     // GOOGLE_API 模式无需焦点刷新，避免多余请求
     if (getApiMethodFromConfig(currentConfig.apiMethod) === QuotaApiMethod.GOOGLE_API) {
-      console.log('[FocusRefresh] GOOGLE_API mode, skip focus-triggered refresh');
+      logger.debug('FocusRefresh', 'GOOGLE_API mode, skip focus-triggered refresh');
       return;
     }
 
     // 检查 quotaService 是否已初始化
     if (!quotaService) {
-      console.log('[FocusRefresh] quotaService not initialized, skipping');
+      logger.debug('FocusRefresh', 'quotaService not initialized, skipping');
       return;
     }
 
     // 节流：X秒内只触发一次，避免频繁刷新
     const now = Date.now();
     if (now - lastFocusRefreshTime < FOCUS_REFRESH_THROTTLE_MS) {
-      console.log('[FocusRefresh] Throttled, skipping refresh');
+      logger.debug('FocusRefresh', 'Throttled, skipping refresh');
       return;
     }
     lastFocusRefreshTime = now;
 
-    console.log('[FocusRefresh] Window focused, triggering quota refresh');
+    logger.debug('FocusRefresh', 'Window focused, triggering quota refresh');
     quotaService.quickRefresh();
   });
 
@@ -328,7 +332,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const googleLoginCommand = vscode.commands.registerCommand(
     'antigravity-quota-watcher.googleLogin',
     async () => {
-      console.log('[Extension] googleLogin command invoked');
+      logger.debug('Extension', 'googleLogin command invoked');
       if (!googleAuthService) {
         vscode.window.showErrorMessage(localizationService.t('login.error.serviceNotInitialized'));
         return;
@@ -356,7 +360,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const googleLogoutCommand = vscode.commands.registerCommand(
     'antigravity-quota-watcher.googleLogout',
     async () => {
-      console.log('[Extension] googleLogout command invoked');
+      logger.debug('Extension', 'googleLogout command invoked');
       if (!googleAuthService) {
         return;
       }
@@ -377,7 +381,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 监听认证状态变化
   const authStateDisposable = googleAuthService.onAuthStateChange((stateInfo: AuthStateInfo) => {
-    console.log('[Extension] Auth state changed:', stateInfo.state);
+    logger.debug('Extension', 'Auth state changed:', stateInfo.state);
     const currentConfig = configService?.getConfig();
     if (currentConfig?.apiMethod !== 'GOOGLE_API') {
       return; // 不是 GOOGLE_API 模式，不处理
@@ -434,7 +438,7 @@ export async function activate(context: vscode.ExtensionContext) {
   registerDevCommands(context);
 
   // Startup log
-  console.log('Antigravity Quota Watcher initialized');
+  logger.info('Extension', 'Antigravity Quota Watcher initialized');
 }
 
 /**
@@ -446,7 +450,7 @@ async function initializeGoogleApiMethod(
   config: Config,
   localizationService: LocalizationService
 ): Promise<void> {
-  console.log('[Extension] Initializing GOOGLE_API method (no port detection needed)');
+  logger.info('Extension', 'Initializing GOOGLE_API method (no port detection needed)');
 
   // 显示初始化状态
   statusBarService!.showInitializing();
@@ -463,18 +467,18 @@ async function initializeGoogleApiMethod(
   if (authState.state === AuthState.NOT_AUTHENTICATED) {
     // 检查本地 Antigravity 是否有已存储的 token
     if (hasAntigravityDb()) {
-      console.log('[Extension] Detected local Antigravity installation, checking for stored token...');
+      logger.info('Extension', 'Detected local Antigravity installation, checking for stored token...');
       const refreshToken = await extractRefreshTokenFromAntigravity();
       
       if (refreshToken) {
-        console.log('[Extension] Found local Antigravity token, prompting user...');
+        logger.info('Extension', 'Found local Antigravity token, prompting user...');
         
         // 先设置为未登录状态并启动定时器，避免弹窗自动消失时状态栏卡住
         // 因为 VS Code 的 showInformationMessage 在弹窗自动消失时 Promise 可能不会立即 resolve
         statusBarService!.showNotLoggedIn();
         statusBarService!.show();
         startLocalTokenCheckTimer();
-        console.log('[Extension] Pre-set status to not logged in before showing prompt');
+        logger.debug('Extension', 'Pre-set status to not logged in before showing prompt');
         
         const useLocalToken = localizationService.t('notify.useLocalToken') || '使用本地 Token 登录';
         const manualLogin = localizationService.t('notify.manualLogin') || '手动登录';
@@ -486,30 +490,30 @@ async function initializeGoogleApiMethod(
           manualLogin
         ).then(async (selection) => {
           if (selection === useLocalToken) {
-            console.log('[Extension] User selected to use local token');
+            logger.info('Extension', 'User selected to use local token');
             stopLocalTokenCheckTimer();
             statusBarService!.showLoggingIn();
             const success = await googleAuthService!.loginWithRefreshToken(refreshToken);
             if (success) {
               // 登录成功，开始轮询
               if (config.enabled) {
-                console.log('[Extension] GOOGLE_API: Starting quota polling after local token login...');
+                logger.info('Extension', 'GOOGLE_API: Starting quota polling after local token login...');
                 statusBarService!.showFetching();
                 quotaService!.startPolling(config.pollingInterval);
               }
               statusBarService!.show();
             } else {
               // 登录失败，恢复未登录状态
-              console.log('[Extension] Local token login failed, reverting to not logged in');
+              logger.warn('Extension', 'Local token login failed, reverting to not logged in');
               statusBarService!.showNotLoggedIn();
               statusBarService!.show();
               startLocalTokenCheckTimer();
             }
           } else if (selection === manualLogin) {
-            console.log('[Extension] User selected manual login');
+            logger.info('Extension', 'User selected manual login');
             // 状态已经是未登录，定时器已启动，无需额外操作
           } else {
-            console.log('[Extension] User dismissed the prompt (selection: undefined)');
+            logger.debug('Extension', 'User dismissed the prompt (selection: undefined)');
             // 弹窗被关闭或自动消失，状态已经是未登录，定时器已启动，无需额外操作
           }
         });
@@ -530,7 +534,7 @@ async function initializeGoogleApiMethod(
     // Token 过期时也启动本地 token 检查定时器
     startLocalTokenCheckTimer();
   } else if (config.enabled) {
-    console.log('[Extension] GOOGLE_API: Starting quota polling...');
+    logger.info('Extension', 'GOOGLE_API: Starting quota polling...');
     statusBarService!.showFetching();
     quotaService.startPolling(config.pollingInterval);
     statusBarService!.show();
@@ -546,7 +550,7 @@ async function initializeLocalApiMethod(
   config: Config,
   localizationService: LocalizationService
 ): Promise<void> {
-  console.log('[Extension] Initializing local API method (port detection required)');
+  logger.info('Extension', 'Initializing local API method (port detection required)');
 
   // Initialize port detection service
   portDetectionService = new PortDetectionService(context);
@@ -560,25 +564,25 @@ async function initializeLocalApiMethod(
   let detectionResult: PortDetectionResult | null = null;
 
   try {
-    console.log('[Extension] Starting initial port detection');
+    logger.info('Extension', 'Starting initial port detection');
     const result = await portDetectionService.detectPort();
     if (result) {
       detectionResult = result;
       detectedPort = result.port;
       detectedCsrfToken = result.csrfToken;
-      console.log('[Extension] Initial port detection success:', detectionResult);
+      logger.info('Extension', 'Initial port detection success:', detectionResult);
     }
   } catch (error) {
-    console.error('❌ Port/CSRF detection failed', error);
+    logger.error('Extension', '❌ Port/CSRF detection failed', error);
     if (error instanceof Error && error.stack) {
-      console.error('Stack:', error.stack);
+      logger.error('Extension', 'Stack:', error.stack);
     }
   }
 
   // Ensure port and CSRF token are available
   if (!detectedPort || !detectedCsrfToken) {
-    console.error('Missing port or CSRF Token, extension cannot start');
-    console.error('Please ensure Antigravity language server is running');
+    logger.error('Extension', 'Missing port or CSRF Token, extension cannot start');
+    logger.error('Extension', 'Please ensure Antigravity language server is running');
     statusBarService!.showError('Port/CSRF Detection failed, Please try restart.');
     statusBarService!.show();
 
@@ -606,7 +610,7 @@ async function initializeLocalApiMethod(
 
     // If enabled, start polling after a short delay
     if (config.enabled) {
-      console.log('Starting quota polling after delay...');
+      logger.info('Extension', 'Starting quota polling after delay...');
       statusBarService!.showFetching();
 
       setTimeout(() => {
@@ -624,27 +628,29 @@ async function initializeLocalApiMethod(
  * 定期检查本地 Antigravity 是否有可用的 token
  */
 function startLocalTokenCheckTimer(): void {
-  // 如果已经在运行，不重复启动
-  if (localTokenCheckTimer) {
-    console.log('[LocalTokenCheck] Timer already running');
-    return;
-  }
-
   // 只在 GOOGLE_API 模式下启动
   const config = configService?.getConfig();
   if (config?.apiMethod !== 'GOOGLE_API') {
+    // 如果不是 GOOGLE_API 模式，确保清理已存在的定时器
+    stopLocalTokenCheckTimer();
     return;
   }
 
-  console.log('[LocalTokenCheck] Starting local token check timer');
+  // 如果已经在运行，不重复启动
+  if (localTokenCheckTimer) {
+    logger.debug('LocalTokenCheck', 'Timer already running');
+    return;
+  }
+
+  logger.info('LocalTokenCheck', 'Starting local token check timer');
   const tokenSyncChecker = TokenSyncChecker.getInstance();
 
   localTokenCheckTimer = setInterval(async () => {
-    console.log('[LocalTokenCheck] Checking for local token...');
+    logger.debug('LocalTokenCheck', 'Checking for local token...');
     await tokenSyncChecker.checkLocalTokenWhenNotLoggedIn(
       // onLocalTokenLogin: 本地 token 登录成功
       () => {
-        console.log('[LocalTokenCheck] Local token login successful');
+        logger.info('LocalTokenCheck', 'Local token login successful');
         stopLocalTokenCheckTimer();
         const currentConfig = configService?.getConfig();
         if (currentConfig?.enabled && quotaService) {
@@ -661,7 +667,7 @@ function startLocalTokenCheckTimer(): void {
  */
 function stopLocalTokenCheckTimer(): void {
   if (localTokenCheckTimer) {
-    console.log('[LocalTokenCheck] Stopping local token check timer');
+    logger.debug('LocalTokenCheck', 'Stopping local token check timer');
     clearInterval(localTokenCheckTimer);
     localTokenCheckTimer = undefined;
   }
@@ -709,7 +715,7 @@ function registerQuotaServiceCallbacks(): void {
 
   // Register error callback (silent, only update status bar)
   quotaService.onError((error: Error) => {
-    console.error('Quota fetch failed:', error);
+    logger.error('Extension', 'Quota fetch failed:', error);
     statusBarService?.showError(`Connection failed: ${error.message}`);
 
     // 自动重探：本地 API 且疑似端口/CSRF 失效时，节流触发 detectPort
@@ -720,7 +726,7 @@ function registerQuotaServiceCallbacks(): void {
         lastAutoRedetectTime = now;
         vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
       } else {
-        console.log('[AutoRedetect] Throttled; skip detectPort this time');
+        logger.debug('AutoRedetect', 'Throttled; skip detectPort this time');
       }
     }
   });
@@ -770,7 +776,7 @@ function handleConfigChange(config: Config): void {
   }
 
   configChangeTimer = setTimeout(async () => {
-    console.log('Config updated (debounced)', config);
+    logger.info('ConfigChange', 'Config updated (debounced)', config);
 
     const newApiMethod = getApiMethodFromConfig(config.apiMethod);
     const localizationService = LocalizationService.getInstance();
@@ -830,11 +836,11 @@ function handleConfigChange(config: Config): void {
           
           // 检查本地 Antigravity 是否有已存储的 token
           if (hasAntigravityDb()) {
-            console.log('[ConfigChange] Detected local Antigravity installation, checking for stored token...');
+            logger.info('ConfigChange', 'Detected local Antigravity installation, checking for stored token...');
             const refreshToken = await extractRefreshTokenFromAntigravity();
             
             if (refreshToken) {
-              console.log('[ConfigChange] Found local Antigravity token, prompting user...');
+              logger.info('ConfigChange', 'Found local Antigravity token, prompting user...');
               const useLocalToken = localizationService.t('notify.useLocalToken') || '使用本地 Token 登录';
               const manualLogin = localizationService.t('notify.manualLogin') || '手动登录';
               
@@ -877,49 +883,46 @@ function handleConfigChange(config: Config): void {
 
       // 如果从 GOOGLE_API 切换到本地 API 方法，需要检测端口和获取 CSRF token
       if (currentApiMethod === QuotaApiMethod.GOOGLE_API && newApiMethod !== QuotaApiMethod.GOOGLE_API) {
-        console.log('[ConfigChange] Switching from GOOGLE_API to local API, need port detection');
+        logger.info('ConfigChange', 'Switching from GOOGLE_API to local API, need port detection');
         quotaService.stopPolling();
         statusBarService?.showDetecting();
 
-        // 异步执行端口检测
-        (async () => {
-          try {
-            // 确保 portDetectionService 已初始化
-            if (!portDetectionService) {
-              // 需要 context，但这里拿不到，所以触发命令
-              await vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
-              return;
-            }
-
-            const result = await portDetectionService.detectPort();
-            if (result && result.port && result.csrfToken) {
-              console.log('[ConfigChange] Port detection success:', result);
-              quotaService!.setPorts(result.connectPort, result.httpPort);
-              quotaService!.setAuthInfo(undefined, result.csrfToken);
-              statusBarService?.clearError();
-
-              if (config.enabled) {
-                quotaService!.startPolling(config.pollingInterval);
-              }
-              vscode.window.showInformationMessage(localizationService.t('notify.configUpdated'));
-            } else {
-              console.warn('[ConfigChange] Port detection failed, no valid result');
-              statusBarService?.showError('Port/CSRF Detection failed');
-              vscode.window.showWarningMessage(
-                localizationService.t('notify.unableToDetectPort'),
-                localizationService.t('notify.retry')
-              ).then(action => {
-                if (action === localizationService.t('notify.retry')) {
-                  vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
-                }
-              });
-            }
-          } catch (error: any) {
-            console.error('[ConfigChange] Port detection error:', error);
-            statusBarService?.showError(`Detection failed: ${error.message}`);
+        // 同步执行端口检测，确保完成后再返回
+        try {
+          // 确保 portDetectionService 已初始化
+          if (!portDetectionService) {
+            // 需要 context，但这里拿不到，所以触发命令
+            await vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
+            return;
           }
-        })();
-        return; // 异步处理，提前返回
+
+          const result = await portDetectionService.detectPort();
+          if (result && result.port && result.csrfToken) {
+            logger.info('ConfigChange', 'Port detection success:', result);
+            quotaService.setPorts(result.connectPort, result.httpPort);
+            quotaService.setAuthInfo(undefined, result.csrfToken);
+            statusBarService?.clearError();
+
+            if (config.enabled) {
+              quotaService.startPolling(config.pollingInterval);
+            }
+            vscode.window.showInformationMessage(localizationService.t('notify.configUpdated'));
+          } else {
+            logger.warn('ConfigChange', 'Port detection failed, no valid result');
+            statusBarService?.showError('Port/CSRF Detection failed');
+            const action = await vscode.window.showWarningMessage(
+              localizationService.t('notify.unableToDetectPort'),
+              localizationService.t('notify.retry')
+            );
+            if (action === localizationService.t('notify.retry')) {
+              vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
+            }
+          }
+        } catch (error: any) {
+          logger.error('ConfigChange', 'Port detection error:', error);
+          statusBarService?.showError(`Detection failed: ${error.message}`);
+        }
+        return;
       }
     }
 
@@ -939,7 +942,7 @@ function handleConfigChange(config: Config): void {
  * Called when the extension is deactivated
  */
 export function deactivate() {
-  console.log('Antigravity Quota Watcher deactivated');
+  logger.info('Extension', 'Antigravity Quota Watcher deactivated');
   stopLocalTokenCheckTimer();
   quotaService?.dispose();
   statusBarService?.dispose();

@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { TOKEN_STORAGE_KEY } from './constants';
+import { logger } from '../logger';
 
 /**
  * Token 来源类型
@@ -85,7 +86,7 @@ export class TokenStorage {
         try {
             return JSON.parse(tokenJson) as TokenData;
         } catch (e) {
-            console.error('Failed to parse stored token:', e);
+            logger.error('TokenStorage', 'Failed to parse stored token:', e);
             return null;
         }
     }

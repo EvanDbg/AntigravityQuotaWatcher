@@ -4,6 +4,7 @@ import { UserStatusResponse, QuotaSnapshot, PromptCreditsInfo, ModelQuotaInfo } 
 import { versionInfo } from "./versionInfo";
 import { GoogleAuthService, AuthState } from "./auth";
 import { GoogleCloudCodeClient, GoogleApiError } from "./api";
+import { logger } from "./logger";
 
 // API 方法枚举
 export enum QuotaApiMethod {
@@ -51,7 +52,7 @@ async function makeRequest(
       timeout: config.timeout ?? 5000
     };
 
-    console.log(`Request URL: ${useHttps ? 'https' : 'http'}://127.0.0.1:${targetPort}${config.path}`);
+    logger.debug('QuotaService', `Request URL: ${useHttps ? 'https' : 'http'}://127.0.0.1:${targetPort}${config.path}`);
 
     const client = useHttps ? https : http;
     const req = client.request(options, (res) => {
@@ -90,7 +91,7 @@ async function makeRequest(
     const msg = (error?.message || '').toLowerCase();
     const shouldRetryHttp = httpPort !== undefined && (error.code === 'EPROTO' || msg.includes('wrong_version_number'));
     if (shouldRetryHttp) {
-      console.warn('HTTPS failed; trying HTTP fallback port:', httpPort);
+      logger.warn('QuotaService', 'HTTPS failed; trying HTTP fallback port:', httpPort);
       return await doRequest(false, httpPort);
     }
     throw error;
@@ -127,7 +128,9 @@ export class QuotaService {
 
   constructor(port: number, csrfToken?: string, httpPort?: number) {
     this.port = port;
-    this.httpPort = httpPort ?? port;
+    // 只有当 httpPort 明确提供时才使用，否则保持 undefined
+    // 避免 GOOGLE_API 模式下 port=0 导致 httpPort 也被设为 0
+    this.httpPort = httpPort;
     this.csrfToken = csrfToken;
     this.googleAuthService = GoogleAuthService.getInstance();
     this.googleApiClient = GoogleCloudCodeClient.getInstance();
@@ -139,7 +142,7 @@ export class QuotaService {
 
   setApiMethod(method: QuotaApiMethod): void {
     this.apiMethod = method;
-    console.log(`Switching to API: ${method}`);
+    logger.info('QuotaService', `Switching to API: ${method}`);
   }
 
   setAuthInfo(_unused?: any, csrfToken?: string): void {
@@ -189,11 +192,14 @@ export class QuotaService {
   }
 
   async startPolling(intervalMs: number): Promise<void> {
+    logger.info('QuotaService', `startPolling called with interval=${intervalMs}ms, apiMethod=${this.apiMethod}`);
+    
     // GOOGLE_API 模式：未登录或 token 过期时不启动轮询，避免无意义请求
     if (this.apiMethod === QuotaApiMethod.GOOGLE_API) {
       const authState = this.googleAuthService.getAuthState();
+      logger.debug('QuotaService', `GOOGLE_API auth state: ${authState.state}`);
       if (authState.state === AuthState.NOT_AUTHENTICATED || authState.state === AuthState.TOKEN_EXPIRED) {
-        console.log('[QuotaService] Polling skipped: Google auth required');
+        logger.info('QuotaService', `Polling skipped: auth state=${authState.state}`);
         if (this.authStatusCallback) {
           this.authStatusCallback(true, authState.state === AuthState.TOKEN_EXPIRED);
         }
@@ -207,13 +213,13 @@ export class QuotaService {
 
     // 防止快速连续调用导致多个定时器
     if (this.isPollingTransition) {
-      console.log('[QuotaService] Polling transition in progress, skipping...');
+      logger.debug('QuotaService', 'Polling transition in progress, skipping...');
       return;
     }
 
     this.isPollingTransition = true;
     try {
-      console.log(`[QuotaService] Starting polling loop every ${intervalMs}ms`);
+      logger.info('QuotaService', `Starting polling loop every ${intervalMs}ms`);
       this.stopPolling();
       await this.fetchQuota();
       this.pollingInterval = setInterval(() => {
@@ -226,7 +232,7 @@ export class QuotaService {
 
   stopPolling(): void {
     if (this.pollingInterval) {
-      console.log('[QuotaService] Stopping polling loop');
+      logger.info('QuotaService', 'Stopping polling loop');
       clearInterval(this.pollingInterval);
       this.pollingInterval = undefined;
     }
@@ -237,7 +243,7 @@ export class QuotaService {
    * 成功后会自动恢复轮询
    */
   async retryFromError(pollingInterval: number): Promise<void> {
-    console.log(`Manual quota retry triggered; restarting full flow (interval ${pollingInterval}ms)...`);
+    logger.info('QuotaService', `Manual quota retry triggered; restarting full flow (interval ${pollingInterval}ms)...`);
     // 重置所有错误计数和状态
     this.consecutiveErrors = 0;
     this.retryCount = 0;
@@ -252,12 +258,12 @@ export class QuotaService {
 
     // 如果获取成功(consecutiveErrors为0),启动轮询
     if (this.consecutiveErrors === 0) {
-      console.log('Fetch succeeded, starting polling...');
+      logger.info('QuotaService', 'Fetch succeeded, starting polling...');
       this.pollingInterval = setInterval(() => {
         this.fetchQuota();
       }, pollingInterval);
     } else {
-      console.log('Fetch failed, keeping polling stopped');
+      logger.warn('QuotaService', 'Fetch failed, keeping polling stopped');
     }
   }
 
@@ -266,7 +272,7 @@ export class QuotaService {
    * 用于用户手动触发快速刷新,不会重置错误状态
    */
   async quickRefresh(): Promise<void> {
-    console.log('Triggering immediate quota refresh...');
+    logger.info('QuotaService', 'Triggering immediate quota refresh...');
     // 直接调用内部获取方法,绕过 isRetrying 检查
     await this.doFetchQuota();
   }
@@ -274,7 +280,7 @@ export class QuotaService {
   private async fetchQuota(): Promise<void> {
     // 如果正在重试中，跳过本次调用
     if (this.isRetrying) {
-      console.log('Currently retrying; skipping this polling run...');
+      logger.debug('QuotaService', 'Currently retrying; skipping this polling run...');
       return;
     }
 
@@ -286,7 +292,7 @@ export class QuotaService {
    * quickRefresh 和 fetchQuota 都调用此方法
    */
   private async doFetchQuota(): Promise<void> {
-    console.log(`Starting quota fetch with method ${this.apiMethod} (firstAttempt=${this.isFirstAttempt})...`);
+    logger.debug('QuotaService', `doFetchQuota: method=${this.apiMethod}, firstAttempt=${this.isFirstAttempt}, retryCount=${this.retryCount}`);
 
     // 通知状态: 正在获取 (仅首次)
     if (this.statusCallback && this.isFirstAttempt) {
@@ -314,22 +320,23 @@ export class QuotaService {
       let snapshot: QuotaSnapshot;
       switch (this.apiMethod) {
         case QuotaApiMethod.GOOGLE_API: {
-          console.log('Using Google API (direct)');
+          logger.debug('QuotaService', 'Using Google API (direct)');
           // Google API 方法有特殊的认证处理逻辑
           const result = await this.handleGoogleApiQuota();
           if (result === null) {
             // 认证问题，已通知回调，直接返回（不进入重试）
+            logger.info('QuotaService', 'Google API returned null (auth issue), skipping update');
             return;
           }
           snapshot = result;
           break;
         }
         case QuotaApiMethod.GET_USER_STATUS: {
-          console.log('Using GetUserStatus API');
+          logger.debug('QuotaService', 'Using GetUserStatus API');
           const userStatusResponse = await this.makeGetUserStatusRequest();
           const invalid1 = this.getInvalidCodeInfo(userStatusResponse);
           if (invalid1) {
-            console.error('Response code invalid; will treat as error', invalid1);
+            logger.error('QuotaService', `Response code invalid: code=${invalid1.code}, message=${invalid1.message}`);
             const detail = invalid1.message ? `: ${invalid1.message}` : '';
             const err = new Error(`Invalid response code ${invalid1.code}${detail}`);
             err.name = 'QuotaInvalidCodeError';
@@ -352,11 +359,11 @@ export class QuotaService {
         //         }
         default: {
           // 默认回退到 GET_USER_STATUS
-          console.log('Falling back to GetUserStatus API');
+          logger.debug('QuotaService', 'Falling back to GetUserStatus API');
           const userStatusResponse = await this.makeGetUserStatusRequest();
           const invalid1 = this.getInvalidCodeInfo(userStatusResponse);
           if (invalid1) {
-            console.error('Response code invalid; will treat as error', invalid1);
+            logger.error('QuotaService', `Response code invalid: code=${invalid1.code}, message=${invalid1.message}`);
             const detail = invalid1.message ? `: ${invalid1.message}` : '';
             const err = new Error(`Invalid response code ${invalid1.code}${detail}`);
             err.name = 'QuotaInvalidCodeError';
@@ -379,23 +386,23 @@ export class QuotaService {
 
       const modelCount = snapshot.models?.length ?? 0;
       const hasPromptCredits = Boolean(snapshot.promptCredits);
-      console.log(`[QuotaService] Snapshot ready: models=${modelCount}, promptCredits=${hasPromptCredits}`);
+      logger.info('QuotaService', `Quota fetched successfully: models=${modelCount}, hasPromptCredits=${hasPromptCredits}, planName=${snapshot.planName || 'N/A'}`);
 
       if (this.updateCallback) {
         this.updateCallback(snapshot);
       } else {
-        console.warn('updateCallback is not registered');
+        logger.warn('QuotaService', 'updateCallback is not registered');
       }
     } catch (error: any) {
       this.consecutiveErrors++;
-      console.error(`Quota fetch failed (attempt ${this.consecutiveErrors}):`, error.message);
+      logger.error('QuotaService', `Quota fetch failed (attempt ${this.consecutiveErrors}): ${error.message}`);
       if (error?.stack) {
-        console.error('Stack:', error.stack);
+        logger.debug('QuotaService', `Stack: ${error.stack}`);
       }
 
       // GOOGLE_API 模式：认证问题时直接停止轮询，等待用户重新登录，不进入重试
       if (this.apiMethod === QuotaApiMethod.GOOGLE_API && this.isAuthError(error)) {
-        console.log('Google API: Auth issue detected, stopping polling until login');
+        logger.info('QuotaService', 'Google API: Auth issue detected, stopping polling until login');
         if (this.authStatusCallback) {
           const message = (error?.message || '').toLowerCase();
           const isExpired = message.includes('expired') || message.includes('invalid_grant');
@@ -412,7 +419,7 @@ export class QuotaService {
       if (this.apiMethod === QuotaApiMethod.GOOGLE_API) {
         const isNetworkError = this.isNetworkOrTimeoutError(error);
         if (isNetworkError) {
-          console.log('Google API: Network/timeout error, marking data as stale');
+          logger.warn('QuotaService', 'Google API: Network/timeout error, marking data as stale');
           if (this.staleCallback) {
             this.staleCallback(true);
           }
@@ -427,7 +434,7 @@ export class QuotaService {
       if (this.retryCount < this.MAX_RETRY_COUNT) {
         this.retryCount++;
         this.isRetrying = true;
-        console.log(`Retry ${this.retryCount} scheduled in ${this.RETRY_DELAY_MS / 1000} seconds...`);
+        logger.info('QuotaService', `Retry ${this.retryCount}/${this.MAX_RETRY_COUNT} scheduled in ${this.RETRY_DELAY_MS / 1000}s`);
 
         // 通知状态: 正在重试
         if (this.statusCallback) {
@@ -442,7 +449,7 @@ export class QuotaService {
       }
 
       // 达到最大重试次数,停止轮询
-      console.error(`Reached max retry count (${this.MAX_RETRY_COUNT}); stopping polling`);
+      logger.error('QuotaService', `Reached max retry count (${this.MAX_RETRY_COUNT}); stopping polling`);
       this.stopPolling(); // 停止定时轮询
 
       if (this.errorCallback) {
@@ -482,7 +489,7 @@ export class QuotaService {
   }
 
   private async makeGetUserStatusRequest(): Promise<any> {
-    console.log('Using CSRF token:', this.csrfToken ? '[present]' : '[missing]');
+    logger.debug('QuotaService', 'Using CSRF token:', this.csrfToken ? '[present]' : '[missing]');
     return makeRequest(
       {
         path: this.GET_USER_STATUS_PATH,
@@ -529,10 +536,11 @@ export class QuotaService {
    */
   private async handleGoogleApiQuota(): Promise<QuotaSnapshot | null> {
     const authState = this.googleAuthService.getAuthState();
+    logger.debug('QuotaService', `handleGoogleApiQuota: authState=${authState.state}`);
 
     // 检查认证状态 - 认证问题直接返回 null，不进入重试逻辑
     if (authState.state === AuthState.NOT_AUTHENTICATED) {
-      console.log('Google API: Not authenticated, showing login prompt');
+      logger.info('QuotaService', 'Google API: Not authenticated, showing login prompt');
       if (this.authStatusCallback) {
         this.authStatusCallback(true, false);
       }
@@ -542,7 +550,7 @@ export class QuotaService {
     }
 
     if (authState.state === AuthState.TOKEN_EXPIRED) {
-      console.log('Google API: Token expired, showing re-auth prompt');
+      logger.info('QuotaService', 'Google API: Token expired, showing re-auth prompt');
       if (this.authStatusCallback) {
         this.authStatusCallback(true, true);
       }
@@ -552,12 +560,13 @@ export class QuotaService {
     }
 
     if (authState.state === AuthState.AUTHENTICATING || authState.state === AuthState.REFRESHING) {
-      console.log('Google API: Authentication in progress, skipping this cycle');
+      logger.debug('QuotaService', 'Google API: Authentication in progress, skipping this cycle');
       // 正在认证中，跳过本次，不算错误也不返回数据
       return null;
     }
 
     // 已认证，尝试获取配额（API 错误会抛出异常，由外层重试处理）
+    logger.debug('QuotaService', 'Google API: Authenticated, fetching quota...');
     return await this.fetchQuotaViaGoogleApi();
   }
 
@@ -568,6 +577,7 @@ export class QuotaService {
   private async fetchQuotaViaGoogleApi(): Promise<QuotaSnapshot> {
     try {
       // 获取有效的 access token (会自动刷新)
+      logger.debug('QuotaService', 'fetchQuotaViaGoogleApi: Getting valid access token...');
       const accessToken = await this.googleAuthService.getValidAccessToken();
 
       // 获取用户信息（邮箱）
@@ -575,22 +585,22 @@ export class QuotaService {
       try {
         const userInfo = await this.googleAuthService.fetchUserInfo(accessToken);
         userEmail = userInfo.email;
-        console.log('Google API: User email:', userEmail);
+        logger.debug('QuotaService', `Google API: User email=${userEmail}`);
       } catch (e) {
-        console.warn('Google API: Failed to fetch user info:', e);
+        logger.warn('QuotaService', `Google API: Failed to fetch user info: ${e}`);
         // 尝试使用缓存的邮箱
         userEmail = this.googleAuthService.getUserEmail();
       }
 
       // 获取项目信息
-      console.log('Google API: Loading project info...');
+      logger.debug('QuotaService', 'Google API: Loading project info...');
       const projectInfo = await this.googleApiClient.loadProjectInfo(accessToken);
-      console.log('Google API: Project info loaded:', projectInfo.tier);
+      logger.info('QuotaService', `Google API: Project loaded, tier=${projectInfo.tier}, projectId=${projectInfo.projectId}`);
 
       // 获取模型配额
-      console.log('Google API: Fetching models quota...');
+      logger.debug('QuotaService', 'Google API: Fetching models quota...');
       const modelsQuota = await this.googleApiClient.fetchModelsQuota(accessToken, projectInfo.projectId);
-      console.log('Google API: Models quota fetched:', modelsQuota.models.length, 'models');
+      logger.info('QuotaService', `Google API: Models quota fetched, count=${modelsQuota.models.length}`);
 
       // 通知认证状态正常
       if (this.authStatusCallback) {
@@ -623,8 +633,9 @@ export class QuotaService {
       };
     } catch (error) {
       if (error instanceof GoogleApiError) {
+        logger.error('QuotaService', `Google API error: status=${error.statusCode}, needsReauth=${error.needsReauth()}, message=${error.message}`);
         if (error.needsReauth()) {
-          console.log('Google API: Token invalid, need to re-authenticate');
+          logger.info('QuotaService', 'Google API: Token invalid, need to re-authenticate');
           if (this.authStatusCallback) {
             this.authStatusCallback(true, true);
           }
@@ -694,7 +705,7 @@ export class QuotaService {
     const resetTime = new Date(quotaInfo.resetTime);
     const timeUntilReset = resetTime.getTime() - Date.now();
 
-    console.log(`[QuotaService] Model ${config.label}: resetTime=${quotaInfo.resetTime}, timeUntilReset=${timeUntilReset}ms (${timeUntilReset <= 0 ? 'EXPIRED' : 'valid'})`);
+    logger.debug('QuotaService', `Model ${config.label}: resetTime=${quotaInfo.resetTime}, timeUntilReset=${timeUntilReset}ms (${timeUntilReset <= 0 ? 'EXPIRED' : 'valid'})`);
 
     return {
       label: config.label,

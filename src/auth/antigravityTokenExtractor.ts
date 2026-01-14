@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { logger } from '../logger';
 
 const execAsync = promisify(exec);
 
@@ -44,11 +45,11 @@ export async function extractRefreshTokenFromAntigravity(): Promise<string | nul
         const dbPath = getAntigravityDbPath();
 
         if (!fs.existsSync(dbPath)) {
-            console.log('[AntigravityTokenExtractor] Database not found:', dbPath);
+            logger.debug('TokenExtractor', 'Database not found:', dbPath);
             return null;
         }
 
-        console.log('[AntigravityTokenExtractor] Attempting to extract token from:', dbPath);
+        logger.debug('TokenExtractor', 'Attempting to extract token from:', dbPath);
 
         // 使用 sqlite3 CLI 读取数据
         const { stdout } = await execAsync(
@@ -152,21 +153,33 @@ function findProtobufField(buffer: Buffer, fieldNumber: number): Buffer | null {
 
 /**
  * 读取 Varint 编码的整数
+ * 使用 BigInt 避免超过 32 位时的溢出问题
  */
 function readVarint(buffer: Buffer, pos: number): { value: number; newPos: number } {
-    let result = 0;
+    let result = BigInt(0);
     let shift = 0;
 
     while (pos < buffer.length) {
         const byte = buffer[pos];
-        result |= (byte & 0x7f) << shift;
+        result |= BigInt(byte & 0x7f) << BigInt(shift);
         pos++;
 
         if ((byte & 0x80) === 0) {
             break;
         }
         shift += 7;
+
+        // 防止无限循环：Varint 最多 10 字节（64 位）
+        if (shift > 63) {
+            break;
+        }
     }
 
-    return { value: result, newPos: pos };
+    // 转换回 number，对于 field number 和 length 来说足够了
+    // 如果值超过 Number.MAX_SAFE_INTEGER，截断为安全范围
+    const numValue = result <= BigInt(Number.MAX_SAFE_INTEGER)
+        ? Number(result)
+        : Number.MAX_SAFE_INTEGER;
+
+    return { value: numValue, newPos: pos };
 }

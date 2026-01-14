@@ -17,6 +17,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from './logger';
 
 export class SafePowerShellPath {
     private static readonly SYSTEM_ROOT: string = process.env.SystemRoot || 'C:\\Windows';
@@ -54,7 +55,7 @@ export class SafePowerShellPath {
         this.cachedPath = result.path;
         this.pathType = result.type;
 
-        console.log(`[SafePowerShellPath] Using PowerShell from: ${result.path} (type: ${result.type})`);
+        logger.info('PowerShellPath', `Using PowerShell from: ${result.path} (type: ${result.type})`);
 
         return this.cachedPath;
     }
@@ -93,7 +94,7 @@ export class SafePowerShellPath {
                 }
             } catch (e) {
                 // Ignore access errors and continue searching
-                console.log(`[SafePowerShellPath] Cannot access ${safePath}: ${e}`);
+                logger.debug('PowerShellPath', `Cannot access ${safePath}: ${e}`);
             }
         }
 
@@ -101,7 +102,7 @@ export class SafePowerShellPath {
         // Note: This is less secure but necessary for compatibility with
         // non-standard Windows installations (e.g., Windows Server Core,
         // custom PowerShell installations, etc.)
-        console.log('[SafePowerShellPath] Warning: No PowerShell found in trusted paths, falling back to PATH lookup');
+        logger.warn('PowerShellPath', 'No PowerShell found in trusted paths, falling back to PATH lookup');
 
         // We return just 'powershell' here, but the caller (WindowsProcessDetector)
         // should ensure the spawn options don't allow CWD hijacking

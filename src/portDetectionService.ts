@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { ProcessPortDetector, AntigravityProcessInfo } from './processPortDetector';
+import { logger } from './logger';
 
 export interface PortDetectionResult {
     /** HTTPS port used by Connect/CommandModelConfigs */
@@ -24,24 +25,25 @@ export class PortDetectionService {
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
         this.processDetector = new ProcessPortDetector();
+        logger.debug('PortDetectionService', 'Service initialized');
     }
 
     /**
      * Single detection method - read from process arguments.
      */
     async detectPort(): Promise<PortDetectionResult | null> {
+        logger.info('PortDetectionService', 'Starting port detection...');
+        
         // Get port and CSRF Token from process args
         const processInfo: AntigravityProcessInfo | null = await this.processDetector.detectProcessInfo();
 
         if (!processInfo) {
-            console.error('[PortDetectionService] Failed to get port and CSRF Token from process.');
-            console.error('[PortDetectionService] Ensure language_server_windows_x64.exe is running.');
+            logger.error('PortDetectionService', 'Failed to get port and CSRF Token from process');
+            logger.error('PortDetectionService', 'Ensure language_server process is running');
             return null;
         }
 
-        console.log(`[PortDetectionService] Detected Connect port (HTTPS): ${processInfo.connectPort}`);
-        console.log(`[PortDetectionService] Detected extension port (HTTP): ${processInfo.extensionPort}`);
-        console.log(`[PortDetectionService] Detected CSRF Token: ${this.maskToken(processInfo.csrfToken)}`);
+        logger.info('PortDetectionService', `Detection successful: connectPort=${processInfo.connectPort}, extensionPort=${processInfo.extensionPort}, csrfToken=${this.maskToken(processInfo.csrfToken)}`);
 
         return {
             // keep compatibility: port is the primary connect port
