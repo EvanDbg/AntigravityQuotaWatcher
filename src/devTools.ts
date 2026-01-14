@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import { LocalizationService } from './i18n/localizationService';
 import { TranslationKey } from './i18n/types';
+import { logger } from './logger';
 
 /**
  * 注册开发预览命令
@@ -17,7 +18,7 @@ export function registerDevCommands(context: vscode.ExtensionContext) {
         return;
     }
 
-    console.log('[DevTools] Registering dev commands (non-production mode)');
+    logger.info('DevTools', 'Registering dev commands (non-production mode)');
     const locService = LocalizationService.getInstance();
 
     // 命令：预览所有通知弹窗

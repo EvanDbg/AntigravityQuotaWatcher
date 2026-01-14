@@ -465,8 +465,15 @@ export class StatusBarService {
   clearStale(): void {
     const currentText = this.statusBarItem.text;
     const staleIcon = this.localizationService.t('status.stale');
+    // 检查是否以 staleIcon 开头，并安全地移除它
     if (currentText.startsWith(staleIcon)) {
-      this.statusBarItem.text = currentText.substring(staleIcon.length + 1); // +1 for space
+      // 移除 staleIcon，同时处理可能存在的空格分隔符
+      let newText = currentText.substring(staleIcon.length);
+      // 如果移除后开头是空格，也一并移除
+      if (newText.startsWith(' ')) {
+        newText = newText.substring(1);
+      }
+      this.statusBarItem.text = newText;
     }
   }
 

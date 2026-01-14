@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from './logger';
 
 export interface VersionInfo {
     /** Extension version from package.json */
@@ -55,7 +56,7 @@ class VersionInfoService {
                 productName = productJson.nameLong || productJson.applicationName || productJson.nameShort;
             }
         } catch (e) {
-            console.warn('[VersionInfo] Failed to read product.json:', e);
+            logger.warn('VersionInfo', 'Failed to read product.json:', e);
         }
 
         // Detect OS
@@ -83,7 +84,7 @@ class VersionInfoService {
             os,
         };
 
-        console.log(`[VersionInfo] Initialized: ${this.getFullVersionString()}`);
+        logger.info('VersionInfo', `Initialized: ${this.getFullVersionString()}`);
     }
 
     /**

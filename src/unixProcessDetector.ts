@@ -9,6 +9,7 @@ import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { IPlatformStrategy } from './platformDetector';
 import { LocalizationService } from './i18n/localizationService';
+import { logger } from './logger';
 
 const execAsync = promisify(exec);
 
@@ -56,7 +57,7 @@ export class UnixProcessDetector implements IPlatformStrategy {
             }
         }
 
-        console.log(`[UnixProcessDetector] Port command check: available=[${available.join(', ') || 'none'}], using=${this.availablePortCommand || 'none'}`);
+        logger.info('UnixDetector', `Port command check: available=[${available.join(', ') || 'none'}], using=${this.availablePortCommand || 'none'}`);
 
         if (!this.availablePortCommand) {
             const localizationService = LocalizationService.getInstance();

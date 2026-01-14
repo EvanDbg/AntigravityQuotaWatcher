@@ -18,13 +18,14 @@ export class ConfigService {
       pollingInterval: Math.max(10, config.get<number>('pollingInterval', 60)) * 1000,
       warningThreshold: config.get<number>('warningThreshold', 50),
       criticalThreshold: config.get<number>('criticalThreshold', 30),
-      apiMethod: (config.get<string>('apiMethod', 'GET_USER_STATUS') as Config['apiMethod']),
+      apiMethod: (config.get<string>('apiMethod', 'GOOGLE_API') as Config['apiMethod']),
       showPromptCredits: config.get<boolean>('showPromptCredits', false),
       showPlanName: config.get<boolean>('showPlanName', false),
       showGeminiPro: config.get<boolean>('showGeminiPro', true),
       showGeminiFlash: config.get<boolean>('showGeminiFlash', true),
       displayStyle: (config.get<string>('displayStyle', 'progressBar') as Config['displayStyle']),
-      language: (config.get<string>('language', 'auto') as Config['language'])
+      language: (config.get<string>('language', 'auto') as Config['language']),
+      logLevel: (config.get<string>('logLevel', 'DEBUG') as Config['logLevel'])
     };
   }
 

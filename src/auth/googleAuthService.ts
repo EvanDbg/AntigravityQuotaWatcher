@@ -18,6 +18,7 @@ import {
 import { TokenStorage, TokenData } from './tokenStorage';
 import { CallbackServer } from './callbackServer';
 import { LocalizationService } from '../i18n/localizationService';
+import { logger } from '../logger';
 
 /**
  * 认证状态枚举
@@ -95,37 +96,41 @@ export class GoogleAuthService {
      * @param context VS Code 扩展上下文
      */
     public async initialize(context: vscode.ExtensionContext): Promise<void> {
-        console.log('[GoogleAuth] Initializing auth service...');
+        logger.info('GoogleAuth', 'Initializing auth service...');
         this.context = context;
         this.tokenStorage.initialize(context);
 
         // 检查是否有存储的 Token
         const hasToken = await this.tokenStorage.hasToken();
-        console.log('[GoogleAuth] Has stored token:', hasToken);
+        logger.info('GoogleAuth', `Has stored token: ${hasToken}`);
 
         if (hasToken) {
             const isExpired = await this.tokenStorage.isTokenExpired();
-            console.log('[GoogleAuth] Token expired:', isExpired);
+            logger.info('GoogleAuth', `Token expired: ${isExpired}`);
 
             if (isExpired) {
                 // 尝试刷新 Token
                 try {
-                    console.log('[GoogleAuth] Attempting to refresh expired token...');
+                    logger.info('GoogleAuth', 'Attempting to refresh expired token...');
                     await this.refreshToken();
-                    console.log('[GoogleAuth] Token refreshed successfully');
+                    logger.info('GoogleAuth', 'Token refreshed successfully');
+                    this.setState(AuthState.AUTHENTICATED);
+                    logger.info('GoogleAuth', 'Set state to AUTHENTICATED (token refreshed)');
                 } catch (e) {
-                    // 刷新失败，但 refresh token 可能仍然有效
-                    // 设置为 AUTHENTICATED，让后续请求再次尝试刷新
-                    console.warn('[GoogleAuth] Token refresh failed during init, will retry later:', e);
+                    // 刷新失败，设置为 TOKEN_EXPIRED 状态
+                    // 后续 getValidAccessToken() 会再次尝试刷新
+                    logger.warn('GoogleAuth', `Token refresh failed during init: ${e}`);
+                    this.setState(AuthState.TOKEN_EXPIRED);
+                    logger.info('GoogleAuth', 'Set state to TOKEN_EXPIRED (refresh failed, will retry on demand)');
                 }
+            } else {
+                // Token 未过期，设置为已认证状态
+                this.setState(AuthState.AUTHENTICATED);
+                logger.info('GoogleAuth', 'Set state to AUTHENTICATED (token valid)');
             }
-            // 只要有存储的 token（包含 refresh token），就认为是已认证状态
-            // 后续 getValidAccessToken() 会再次尝试刷新
-            this.setState(AuthState.AUTHENTICATED);
-            console.log('[GoogleAuth] Set state to AUTHENTICATED (has refresh token)');
         } else {
             this.setState(AuthState.NOT_AUTHENTICATED);
-            console.log('[GoogleAuth] No stored token, user needs to login');
+            logger.info('GoogleAuth', 'No stored token, user needs to login');
         }
     }
 
@@ -152,10 +157,10 @@ export class GoogleAuthService {
      * @returns 是否登录成功
      */
     public async login(): Promise<boolean> {
-        console.log('[GoogleAuth] Login initiated, current state:', this.currentState);
+        logger.info('GoogleAuth', `Login initiated, current state: ${this.currentState}`);
 
         if (this.currentState === AuthState.AUTHENTICATING) {
-            console.log('[GoogleAuth] Already authenticating, skipping');
+            logger.info('GoogleAuth', 'Already authenticating, skipping');
             return false; // 正在登录中
         }
 
@@ -164,7 +169,7 @@ export class GoogleAuthService {
 
             // 生成 state 参数 (CSRF 保护)
             const state = crypto.randomBytes(32).toString('hex');
-            console.log('[GoogleAuth] Generated state for CSRF protection');
+            logger.debug('GoogleAuth', 'Generated state for CSRF protection');
 
             // 生成 PKCE code verifier 和 challenge
             const codeVerifier = crypto.randomBytes(32).toString('base64url');
@@ -172,7 +177,7 @@ export class GoogleAuthService {
                 .createHash('sha256')
                 .update(codeVerifier)
                 .digest('base64url');
-            console.log('[GoogleAuth] Generated PKCE code challenge');
+            logger.debug('GoogleAuth', 'Generated PKCE code challenge');
 
             // 启动回调服务器
             this.callbackServer = new CallbackServer();
@@ -185,11 +190,11 @@ export class GoogleAuthService {
                         const iconBuffer = fs.readFileSync(iconPath);
                         const iconBase64 = `data:image/png;base64,${iconBuffer.toString('base64')}`;
                         this.callbackServer.setIcon(iconBase64);
-                        console.log('[GoogleAuth] Loaded plugin icon for callback page');
+                        logger.debug('GoogleAuth', 'Loaded plugin icon for callback page');
                     }
                 }
             } catch (iconError) {
-                console.warn('[GoogleAuth] Failed to load icon for callback page:', iconError);
+                logger.warn('GoogleAuth', `Failed to load icon for callback page: ${iconError}`);
             }
 
             // 等待服务器启动并获取端口
@@ -197,11 +202,11 @@ export class GoogleAuthService {
 
             // 获取重定向 URI（服务器已启动，端口已分配）
             const redirectUri = this.callbackServer.getRedirectUri();
-            console.log('[GoogleAuth] Callback server started, redirect URI:', redirectUri);
+            logger.info('GoogleAuth', `Callback server started, redirect URI: ${redirectUri}`);
 
             // 构建授权 URL
             const authUrl = this.buildAuthUrl(redirectUri, state, codeChallenge);
-            console.log('[GoogleAuth] Opening browser for authorization...');
+            logger.info('GoogleAuth', 'Opening browser for authorization...');
 
             // 开始等待回调（此时设置请求处理器）
             const callbackPromise = this.callbackServer.waitForCallback(state);
@@ -210,9 +215,9 @@ export class GoogleAuthService {
             await vscode.env.openExternal(vscode.Uri.parse(authUrl));
 
             // 等待回调
-            console.log('[GoogleAuth] Waiting for OAuth callback...');
+            logger.debug('GoogleAuth', 'Waiting for OAuth callback...');
             const result = await callbackPromise;
-            console.log('[GoogleAuth] Received authorization code, exchanging for token...');
+            logger.info('GoogleAuth', 'Received authorization code, exchanging for token...');
 
             // 交换 authorization code 获取 Token
             const tokenData = await this.exchangeCodeForToken(
@@ -220,20 +225,20 @@ export class GoogleAuthService {
                 redirectUri,
                 codeVerifier
             );
-            console.log('[GoogleAuth] Token exchange successful, expires at:', new Date(tokenData.expiresAt).toISOString());
+            logger.info('GoogleAuth', `Token exchange successful, expires at: ${new Date(tokenData.expiresAt).toISOString()}`);
 
             // 保存 Token
             await this.tokenStorage.saveToken(tokenData);
-            console.log('[GoogleAuth] Token saved to secure storage');
+            logger.info('GoogleAuth', 'Token saved to secure storage');
 
             this.setState(AuthState.AUTHENTICATED);
             vscode.window.showInformationMessage(LocalizationService.getInstance().t('login.success.google'));
             return true;
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
-            console.error('[GoogleAuth] Login failed:', errorMessage);
+            logger.error('GoogleAuth', `Login failed: ${errorMessage}`);
             if (e instanceof Error && e.stack) {
-                console.error('[GoogleAuth] Stack:', e.stack);
+                logger.debug('GoogleAuth', `Stack: ${e.stack}`);
             }
             this.lastError = errorMessage;
             this.setState(AuthState.ERROR);
@@ -244,7 +249,7 @@ export class GoogleAuthService {
             if (this.callbackServer) {
                 this.callbackServer.stop();
                 this.callbackServer = null;
-                console.log('[GoogleAuth] Callback server stopped');
+                logger.debug('GoogleAuth', 'Callback server stopped');
             }
         }
     }
@@ -272,10 +277,10 @@ export class GoogleAuthService {
      * @returns 是否登录成功
      */
     public async loginWithRefreshToken(refreshToken: string): Promise<boolean> {
-        console.log('[GoogleAuth] Attempting login with imported refresh_token');
+        logger.info('GoogleAuth', 'Attempting login with imported refresh_token');
 
         if (this.currentState === AuthState.AUTHENTICATING || this.currentState === AuthState.REFRESHING) {
-            console.log('[GoogleAuth] Already authenticating/refreshing, skipping');
+            logger.info('GoogleAuth', 'Already authenticating/refreshing, skipping');
             return false;
         }
 
@@ -290,9 +295,9 @@ export class GoogleAuthService {
                 grant_type: 'refresh_token',
             });
 
-            console.log('[GoogleAuth] Sending token refresh request with imported refresh_token...');
+            logger.debug('GoogleAuth', 'Sending token refresh request with imported refresh_token...');
             const response = await this.makeTokenRequest(params);
-            console.log('[GoogleAuth] Token refresh response received, expires_in:', response.expires_in);
+            logger.info('GoogleAuth', `Token refresh response received, expires_in: ${response.expires_in}`);
 
             // 构建 TokenData 并保存
             const tokenData: TokenData = {
@@ -305,14 +310,14 @@ export class GoogleAuthService {
             };
 
             await this.tokenStorage.saveToken(tokenData);
-            console.log('[GoogleAuth] Token saved to secure storage');
+            logger.info('GoogleAuth', 'Token saved to secure storage');
 
             this.setState(AuthState.AUTHENTICATED);
             vscode.window.showInformationMessage(LocalizationService.getInstance().t('login.success.localToken'));
             return true;
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
-            console.error('[GoogleAuth] Login with refresh_token failed:', errorMessage);
+            logger.error('GoogleAuth', `Login with refresh_token failed: ${errorMessage}`);
             this.lastError = errorMessage;
             this.setState(AuthState.ERROR);
             vscode.window.showErrorMessage(LocalizationService.getInstance().t('login.error.localToken', { error: errorMessage }));
@@ -327,9 +332,9 @@ export class GoogleAuthService {
     public async convertToManualSource(): Promise<void> {
         try {
             await this.tokenStorage.updateTokenSource('manual');
-            console.log('[GoogleAuth] Token source converted to manual');
+            logger.info('GoogleAuth', 'Token source converted to manual');
         } catch (e) {
-            console.error('[GoogleAuth] Failed to convert token source:', e);
+            logger.error('GoogleAuth', `Failed to convert token source: ${e}`);
         }
     }
 
@@ -347,10 +352,10 @@ export class GoogleAuthService {
      * @throws 如果无法获取有效 Token
      */
     public async getValidAccessToken(): Promise<string> {
-        console.log('[GoogleAuth] Getting valid access token...');
+        logger.debug('GoogleAuth', 'Getting valid access token...');
         const token = await this.tokenStorage.getToken();
         if (!token) {
-            console.log('[GoogleAuth] No token found');
+            logger.info('GoogleAuth', 'No token found');
             this.setState(AuthState.NOT_AUTHENTICATED);
             throw new Error('Not authenticated');
         }
@@ -358,16 +363,16 @@ export class GoogleAuthService {
         // 检查是否需要刷新 (提前 5 分钟)
         const isExpired = await this.tokenStorage.isTokenExpired();
         if (isExpired) {
-            console.log('[GoogleAuth] Token expired or expiring soon, refreshing...');
+            logger.info('GoogleAuth', 'Token expired or expiring soon, refreshing...');
             await this.refreshToken();
         }
 
         const accessToken = await this.tokenStorage.getAccessToken();
         if (!accessToken) {
-            console.error('[GoogleAuth] Failed to get access token after refresh');
+            logger.error('GoogleAuth', 'Failed to get access token after refresh');
             throw new Error('Failed to get access token');
         }
-        console.log('[GoogleAuth] Access token obtained:', this.maskToken(accessToken));
+        logger.debug('GoogleAuth', `Access token obtained: ${this.maskToken(accessToken)}`);
         return accessToken;
     }
 
@@ -399,7 +404,7 @@ export class GoogleAuthService {
      * @returns 用户信息
      */
     public async fetchUserInfo(accessToken: string): Promise<UserInfoResponse> {
-        console.log('[GoogleAuth] Fetching user info...');
+        logger.debug('GoogleAuth', 'Fetching user info...');
         return new Promise((resolve, reject) => {
             const options: https.RequestOptions = {
                 hostname: 'www.googleapis.com',
@@ -422,20 +427,23 @@ export class GoogleAuthService {
                     try {
                         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
                             const response = JSON.parse(data) as UserInfoResponse;
-                            console.log('[GoogleAuth] User info fetched, email:', response.email);
+                            logger.info('GoogleAuth', `User info fetched, email: ${response.email}`);
                             // 缓存邮箱
                             this.userEmail = response.email;
                             resolve(response);
                         } else {
+                            logger.error('GoogleAuth', `Failed to fetch user info: ${res.statusCode} - ${data}`);
                             reject(new Error(`Failed to fetch user info: ${res.statusCode} - ${data}`));
                         }
                     } catch (e) {
+                        logger.error('GoogleAuth', `Failed to parse user info response: ${data}`);
                         reject(new Error(`Failed to parse user info response: ${data}`));
                     }
                 });
             });
 
             req.on('error', (e) => {
+                logger.error('GoogleAuth', `User info request error: ${e.message}`);
                 reject(e);
             });
 
@@ -447,16 +455,16 @@ export class GoogleAuthService {
      * 刷新 Token
      */
     private async refreshToken(): Promise<void> {
-        console.log('[GoogleAuth] Refreshing token...');
+        logger.info('GoogleAuth', 'Refreshing token...');
         this.setState(AuthState.REFRESHING);
 
         try {
             const refreshToken = await this.tokenStorage.getRefreshToken();
             if (!refreshToken) {
-                console.error('[GoogleAuth] No refresh token available');
+                logger.error('GoogleAuth', 'No refresh token available');
                 throw new Error('No refresh token available');
             }
-            console.log('[GoogleAuth] Using refresh token:', this.maskToken(refreshToken));
+            logger.debug('GoogleAuth', `Using refresh token: ${this.maskToken(refreshToken)}`);
 
             const params = new URLSearchParams({
                 client_id: GOOGLE_CLIENT_ID,
@@ -465,21 +473,21 @@ export class GoogleAuthService {
                 grant_type: 'refresh_token',
             });
 
-            console.log('[GoogleAuth] Sending token refresh request to Google...');
+            logger.debug('GoogleAuth', 'Sending token refresh request to Google...');
             const response = await this.makeTokenRequest(params);
-            console.log('[GoogleAuth] Token refresh response received, expires_in:', response.expires_in);
+            logger.info('GoogleAuth', `Token refresh response received, expires_in: ${response.expires_in}`);
 
             // 更新 access token
             await this.tokenStorage.updateAccessToken(
                 response.access_token,
                 response.expires_in
             );
-            console.log('[GoogleAuth] Access token updated successfully');
+            logger.info('GoogleAuth', 'Access token updated successfully');
 
             this.setState(AuthState.AUTHENTICATED);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
-            console.error('[GoogleAuth] Token refresh failed:', errorMessage);
+            logger.error('GoogleAuth', `Token refresh failed: ${errorMessage}`);
             this.lastError = errorMessage;
             this.setState(AuthState.TOKEN_EXPIRED);
             throw e;
@@ -603,14 +611,14 @@ export class GoogleAuthService {
     private setState(state: AuthState): void {
         const previousState = this.currentState;
         this.currentState = state;
-        console.log(`[GoogleAuth] State changed: ${previousState} -> ${state}`);
+        logger.info('GoogleAuth', `State changed: ${previousState} -> ${state}`);
 
         const stateInfo = this.getAuthState();
         this.stateChangeListeners.forEach((listener) => {
             try {
                 listener(stateInfo);
             } catch (e) {
-                console.error('[GoogleAuth] Auth state listener error:', e);
+                logger.error('GoogleAuth', `Auth state listener error: ${e}`);
             }
         });
     }

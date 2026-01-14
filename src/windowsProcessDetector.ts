@@ -9,6 +9,7 @@
 
 import { IPlatformStrategy } from './platformDetector';
 import { SafePowerShellPath } from './safePowerShellPath';
+import { logger } from './logger';
 
 export class WindowsProcessDetector implements IPlatformStrategy {
     private static readonly SYSTEM_ROOT: string = process.env.SystemRoot || 'C:\\Windows';
@@ -97,22 +98,22 @@ export class WindowsProcessDetector implements IPlatformStrategy {
                     const antigravityProcesses = data.filter((item: any) =>
                         item.CommandLine && this.isAntigravityProcess(item.CommandLine)
                     );
-                    console.log(`[WindowsProcessDetector] Found ${totalCount} language_server process(es), ${antigravityProcesses.length} belong to Antigravity`);
+                    logger.info('WindowsDetector', `Found ${totalCount} language_server process(es), ${antigravityProcesses.length} belong to Antigravity`);
                     if (antigravityProcesses.length === 0) {
-                        console.log('[WindowsProcessDetector] No Antigravity process found, skipping non-Antigravity processes');
+                        logger.info('WindowsDetector', 'No Antigravity process found, skipping non-Antigravity processes');
                         return null;
                     }
                     if (totalCount > 1) {
-                        console.log(`[WindowsProcessDetector] Selected Antigravity process PID: ${antigravityProcesses[0].ProcessId}`);
+                        logger.info('WindowsDetector', `Selected Antigravity process PID: ${antigravityProcesses[0].ProcessId}`);
                     }
                     data = antigravityProcesses[0];
                 } else {
                     // 单个对象时也要检查是否是 Antigravity 进程
                     if (!data.CommandLine || !this.isAntigravityProcess(data.CommandLine)) {
-                        console.log('[WindowsProcessDetector] Single process found but not Antigravity, skipping');
+                        logger.info('WindowsDetector', 'Single process found but not Antigravity, skipping');
                         return null;
                     }
-                    console.log(`[WindowsProcessDetector] Found 1 Antigravity process, PID: ${data.ProcessId}`);
+                    logger.info('WindowsDetector', `Found 1 Antigravity process, PID: ${data.ProcessId}`);
                 }
 
                 const commandLine = data.CommandLine || '';
@@ -134,7 +135,8 @@ export class WindowsProcessDetector implements IPlatformStrategy {
 
                 return { pid, extensionPort, csrfToken };
             } catch (e) {
-                // JSON 解析失败,继续尝试 WMIC 格式
+                // JSON 解析失败,记录日志并继续尝试 WMIC 格式
+                logger.debug('WindowsDetector', `JSON parse failed, trying WMIC format: ${e}`);
             }
         }
 
@@ -175,11 +177,11 @@ export class WindowsProcessDetector implements IPlatformStrategy {
         }
 
         if (candidates.length === 0) {
-            console.log('[WindowsProcessDetector] WMIC: No Antigravity process found');
+            logger.info('WindowsDetector', 'WMIC: No Antigravity process found');
             return null;
         }
 
-        console.log(`[WindowsProcessDetector] WMIC: Found ${candidates.length} Antigravity process(es), using PID: ${candidates[0].pid}`);
+        logger.info('WindowsDetector', `WMIC: Found ${candidates.length} Antigravity process(es), using PID: ${candidates[0].pid}`);
         return candidates[0];
     }
 

@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import { WindowsProcessDetector } from './windowsProcessDetector';
 import { UnixProcessDetector } from './unixProcessDetector';
+import { logger } from './logger';
 
 /**
  * Platform-specific strategy interface for process detection.
@@ -100,7 +101,7 @@ export class PlatformDetector {
 
                 // 根据配置设置模式
                 windowsDetector.setUsePowerShell(forcePowerShell);
-                console.log(`[PlatformDetector] Configuration: forcePowerShell=${forcePowerShell}, using ${forcePowerShell ? 'PowerShell' : 'WMIC'} mode`);
+                logger.info('PlatformDetector', `Configuration: forcePowerShell=${forcePowerShell}, using ${forcePowerShell ? 'PowerShell' : 'WMIC'} mode`);
 
                 return windowsDetector;
             }

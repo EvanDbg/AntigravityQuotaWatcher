@@ -90,4 +90,5 @@ export interface Config {
   showGeminiFlash: boolean;
   displayStyle: 'percentage' | 'progressBar' | 'dots';
   language: 'auto' | 'en' | 'zh-cn';
+  logLevel: 'ERROR' | 'WARNING' | 'INFO' | 'DEBUG';
 }

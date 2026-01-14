@@ -18,5 +18,6 @@
     "config.showGeminiFlash": "Show Gemini Flash (G Flash) quota in status bar",
     "config.showPromptCredits": "Show Prompt Credits (not officially enabled yet)",
     "config.forcePowerShell": "Use PowerShell mode for process detection [Windows only, requires extension restart]",
-    "config.language": "Language / 语言"
+    "config.language": "Language / 语言",
+    "config.logLevel": "Log level for debugging"
 }

@@ -11,6 +11,7 @@ import { GoogleAuthService } from './googleAuthService';
 import { extractRefreshTokenFromAntigravity, hasAntigravityDb } from './antigravityTokenExtractor';
 import { TokenStorage } from './tokenStorage';
 import { LocalizationService } from '../i18n/localizationService';
+import { logger } from '../logger';
 
 /**
  * 同步检查结果
@@ -65,6 +66,7 @@ export class TokenSyncChecker {
         
         // 检查是否已登录
         const hasToken = await tokenStorage.hasToken();
+        logger.debug('TokenSyncChecker', `checkSync: hasToken=${hasToken}`);
         
         if (!hasToken) {
             // 未登录状态：检查本地是否有可用的 token
@@ -72,11 +74,11 @@ export class TokenSyncChecker {
                 try {
                     const localToken = await extractRefreshTokenFromAntigravity();
                     if (localToken) {
-                        console.log('[TokenSyncChecker] Not logged in but local token available');
+                        logger.info('TokenSyncChecker', 'Not logged in but local token available');
                         return TokenSyncStatus.LOCAL_TOKEN_AVAILABLE;
                     }
                 } catch (e) {
-                    console.log('[TokenSyncChecker] Error checking local token:', e);
+                    logger.debug('TokenSyncChecker', `Error checking local token: ${e}`);
                 }
             }
             return TokenSyncStatus.SKIP;
@@ -84,6 +86,7 @@ export class TokenSyncChecker {
         
         // 检查 token 来源
         const source = await tokenStorage.getTokenSource();
+        logger.debug('TokenSyncChecker', `Token source: ${source}`);
         if (source !== 'imported') {
             return TokenSyncStatus.SKIP;
         }
@@ -91,7 +94,7 @@ export class TokenSyncChecker {
         // 检查本地 Antigravity 数据库是否存在
         if (!hasAntigravityDb()) {
             // 数据库不存在，可能是 Antigravity 被卸载了
-            console.log('[TokenSyncChecker] Antigravity database not found');
+            logger.info('TokenSyncChecker', 'Antigravity database not found');
             return TokenSyncStatus.TOKEN_REMOVED;
         }
 
@@ -99,6 +102,7 @@ export class TokenSyncChecker {
             // 获取当前存储的 refresh_token
             const currentRefreshToken = await tokenStorage.getRefreshToken();
             if (!currentRefreshToken) {
+                logger.warn('TokenSyncChecker', 'No refresh token in storage');
                 return TokenSyncStatus.ERROR;
             }
 
@@ -107,19 +111,20 @@ export class TokenSyncChecker {
 
             if (!localRefreshToken) {
                 // 本地没有 token 了（用户在 Antigravity 退出登录）
-                console.log('[TokenSyncChecker] Local Antigravity token removed');
+                logger.info('TokenSyncChecker', 'Local Antigravity token removed');
                 return TokenSyncStatus.TOKEN_REMOVED;
             }
 
             if (localRefreshToken !== currentRefreshToken) {
                 // Token 不一致（用户在 Antigravity 切换了账号）
-                console.log('[TokenSyncChecker] Local Antigravity token changed');
+                logger.info('TokenSyncChecker', 'Local Antigravity token changed');
                 return TokenSyncStatus.TOKEN_CHANGED;
             }
 
+            logger.debug('TokenSyncChecker', 'Token in sync');
             return TokenSyncStatus.IN_SYNC;
         } catch (e) {
-            console.error('[TokenSyncChecker] Check failed:', e);
+            logger.error('TokenSyncChecker', `Check failed: ${e}`);
             return TokenSyncStatus.ERROR;
         }
     }
@@ -140,10 +145,12 @@ export class TokenSyncChecker {
 
         // 如果弹窗正在显示，跳过
         if (this.isPromptShowing) {
+            logger.debug('TokenSyncChecker', 'Prompt is showing, skipping check');
             return false;
         }
 
         const status = await this.checkSync();
+        logger.debug('TokenSyncChecker', `checkAndHandle: status=${status}`);
 
         // 对于未登录状态下检测本地 token，使用单独的节流
         if (status === TokenSyncStatus.LOCAL_TOKEN_AVAILABLE) {
@@ -154,7 +161,7 @@ export class TokenSyncChecker {
             
             // 弹窗冷却检查
             if (now - this.lastPromptTime < this.PROMPT_COOLDOWN_MS) {
-                console.log('[TokenSyncChecker] Prompt cooldown for local token, skipping');
+                logger.debug('TokenSyncChecker', 'Prompt cooldown for local token, skipping');
                 return true;
             }
             
@@ -173,17 +180,18 @@ export class TokenSyncChecker {
         }
 
         if (status === TokenSyncStatus.ERROR) {
-            console.warn('[TokenSyncChecker] Check returned error, skipping prompt');
+            logger.warn('TokenSyncChecker', 'Check returned error, skipping prompt');
             return true;
         }
 
         // 弹窗冷却检查
         if (now - this.lastPromptTime < this.PROMPT_COOLDOWN_MS) {
-            console.log('[TokenSyncChecker] Prompt cooldown, skipping');
+            logger.debug('TokenSyncChecker', 'Prompt cooldown, skipping');
             return true;
         }
 
         // 显示弹窗
+        logger.info('TokenSyncChecker', `Showing sync prompt for status: ${status}`);
         await this.showSyncPrompt(status, onTokenChanged, onLogout);
         return true;
     }
@@ -201,6 +209,7 @@ export class TokenSyncChecker {
 
         // 如果弹窗正在显示，跳过
         if (this.isPromptShowing) {
+            logger.debug('TokenSyncChecker', 'Prompt is showing, skipping local token check');
             return false;
         }
 
@@ -212,27 +221,29 @@ export class TokenSyncChecker {
 
         // 检查本地是否有可用的 token
         if (!hasAntigravityDb()) {
+            logger.debug('TokenSyncChecker', 'No Antigravity DB found');
             return true;
         }
 
         try {
             const localToken = await extractRefreshTokenFromAntigravity();
             if (!localToken) {
+                logger.debug('TokenSyncChecker', 'No local token found');
                 return true;
             }
 
-            console.log('[TokenSyncChecker] Local token detected while not logged in');
+            logger.info('TokenSyncChecker', 'Local token detected while not logged in');
 
             // 弹窗冷却检查
             if (now - this.lastPromptTime < this.PROMPT_COOLDOWN_MS) {
-                console.log('[TokenSyncChecker] Prompt cooldown for local token, skipping');
+                logger.debug('TokenSyncChecker', 'Prompt cooldown for local token, skipping');
                 return true;
             }
 
             await this.showLocalTokenPrompt(onLocalTokenLogin);
             return true;
         } catch (e) {
-            console.log('[TokenSyncChecker] Error checking local token:', e);
+            logger.debug('TokenSyncChecker', `Error checking local token: ${e}`);
             return true;
         }
     }
@@ -251,12 +262,14 @@ export class TokenSyncChecker {
             const useLocalToken = localizationService.t('notify.useLocalToken') || '使用本地 Token 登录';
             const manualLogin = localizationService.t('notify.manualLogin') || '手动登录';
 
+            logger.info('TokenSyncChecker', 'Showing local token prompt');
             const selection = await vscode.window.showInformationMessage(
                 localizationService.t('notify.localTokenDetected') || '检测到本地 Antigravity 已登录，是否使用该账号？',
                 useLocalToken,
                 manualLogin
             );
 
+            logger.info('TokenSyncChecker', `User selection: ${selection || 'dismissed'}`);
             if (selection === useLocalToken) {
                 const refreshToken = await extractRefreshTokenFromAntigravity();
                 if (refreshToken) {
@@ -294,6 +307,7 @@ export class TokenSyncChecker {
                 const syncLabel = localizationService.t('notify.syncToken') || '同步';
                 const keepLabel = localizationService.t('notify.keepCurrentToken') || '保持当前';
 
+                logger.info('TokenSyncChecker', 'Showing token changed prompt');
                 // 使用模态对话框，确保用户必须做出选择，不会自动消失
                 const selection = await vscode.window.showInformationMessage(
                     localizationService.t('notify.tokenChanged') || '检测到 Antigravity 账号已变更，是否同步？',
@@ -302,6 +316,7 @@ export class TokenSyncChecker {
                     keepLabel
                 );
 
+                logger.info('TokenSyncChecker', `User selection for token changed: ${selection || 'dismissed'}`);
                 if (selection === syncLabel) {
                     // 用户选择同步，使用新的 token 登录
                     const newToken = await extractRefreshTokenFromAntigravity();
@@ -322,6 +337,7 @@ export class TokenSyncChecker {
                 const syncLogoutLabel = localizationService.t('notify.syncLogout') || '同步退出';
                 const keepLoginLabel = localizationService.t('notify.keepLogin') || '保持登录';
 
+                logger.info('TokenSyncChecker', 'Showing token removed prompt');
                 // 使用模态对话框，确保用户必须做出选择，不会自动消失
                 const selection = await vscode.window.showInformationMessage(
                     localizationService.t('notify.tokenRemoved') || '检测到 Antigravity 已退出登录，是否同步退出？',
@@ -330,6 +346,7 @@ export class TokenSyncChecker {
                     keepLoginLabel
                 );
 
+                logger.info('TokenSyncChecker', `User selection for token removed: ${selection || 'dismissed'}`);
                 if (selection === syncLogoutLabel) {
                     // 用户选择同步退出
                     const wasLoggedIn = await googleAuthService.logout();
