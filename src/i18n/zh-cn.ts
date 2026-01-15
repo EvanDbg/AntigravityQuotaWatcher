@@ -70,7 +70,7 @@ export const zh_cn: TranslationMap = {
     'login.success.localToken': '已使用本地 Antigravity 账号登录成功！',
     'login.error.google': 'Google 登录失败: {error}',
     'login.error.localToken': '使用本地 Token 登录失败: {error}',
-    'login.error.localTokenImport': '未能检测到本地 Antigravity 登录状态，请手动登录。',
+    'login.error.localTokenImport': '未检测到本地 Antigravity 登录状态，请点击右下角状态栏进行手动登录。',
     'logout.success': '已登出 Google 账号',
 
     // 开发工具

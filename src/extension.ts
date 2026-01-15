@@ -124,7 +124,7 @@ export async function activate(context: vscode.ExtensionContext) {
           // GOOGLE_API 模式下，提示用户需要先登录
           logger.debug('Extension', 'quotaService not initialized in GOOGLE_API mode, prompt login');
           vscode.window.showInformationMessage(
-            localizationService.t('notify.pleaseLoginFirst') || '请先登录 Google 账号'
+            localizationService.t('notify.pleaseLoginFirst')
           );
         } else {
           // 本地 API 模式，委托给 detectPort 命令进行重新检测
@@ -156,7 +156,7 @@ export async function activate(context: vscode.ExtensionContext) {
           // GOOGLE_API 模式下，提示用户需要先登录
           logger.debug('Extension', 'quotaService not initialized in GOOGLE_API mode, prompt login');
           vscode.window.showInformationMessage(
-            localizationService.t('notify.pleaseLoginFirst') || '请先登录 Google 账号'
+            localizationService.t('notify.pleaseLoginFirst')
           );
         } else {
           // 本地 API 模式，委托给 detectPort 命令进行重新检测
@@ -198,8 +198,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (currentApiMethod === QuotaApiMethod.GOOGLE_API) {
         logger.debug('Extension', 'detectPort: GOOGLE_API method does not need port detection');
         vscode.window.showInformationMessage(
-          localizationService.t('notify.googleApiNoPortDetection') ||
-          'Google API method does not require port detection. Please use Google Login instead.'
+          localizationService.t('notify.googleApiNoPortDetection')
         );
         return;
       }
@@ -480,12 +479,12 @@ async function initializeGoogleApiMethod(
         startLocalTokenCheckTimer();
         logger.debug('Extension', 'Pre-set status to not logged in before showing prompt');
         
-        const useLocalToken = localizationService.t('notify.useLocalToken') || '使用本地 Token 登录';
-        const manualLogin = localizationService.t('notify.manualLogin') || '手动登录';
+        const useLocalToken = localizationService.t('notify.useLocalToken');
+        const manualLogin = localizationService.t('notify.manualLogin');
         
         // 使用非阻塞方式处理弹窗，不等待用户响应
         vscode.window.showInformationMessage(
-          localizationService.t('notify.localTokenDetected') || '检测到本地 Antigravity 已登录，是否使用该账号？',
+          localizationService.t('notify.localTokenDetected'),
           useLocalToken,
           manualLogin
         ).then(async (selection) => {
@@ -522,7 +521,7 @@ async function initializeGoogleApiMethod(
         return;
       } else {
         vscode.window.showWarningMessage(
-          localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+          localizationService.t('login.error.localTokenImport')
         );
       }
     }
@@ -845,11 +844,11 @@ function handleConfigChange(config: Config): void {
             
             if (refreshToken) {
               logger.info('ConfigChange', 'Found local Antigravity token, prompting user...');
-              const useLocalToken = localizationService.t('notify.useLocalToken') || '使用本地 Token 登录';
-              const manualLogin = localizationService.t('notify.manualLogin') || '手动登录';
+              const useLocalToken = localizationService.t('notify.useLocalToken');
+              const manualLogin = localizationService.t('notify.manualLogin');
               
               const selection = await vscode.window.showInformationMessage(
-                localizationService.t('notify.localTokenDetected') || '检测到本地 Antigravity 已登录，是否使用该账号？',
+                localizationService.t('notify.localTokenDetected'),
                 useLocalToken,
                 manualLogin
               );
@@ -871,7 +870,7 @@ function handleConfigChange(config: Config): void {
               // 用户选择手动登录或关闭弹窗，显示未登录状态
             } else {
               vscode.window.showWarningMessage(
-                localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+                localizationService.t('login.error.localTokenImport')
               );
             }
           }
