@@ -1,5 +1,12 @@
 # <img src="./icon.png" width="80" style="vertical-align: middle"> Antigravity Quota Watcher
 
+> [!WARNING]
+> **Notice: Quota Not Refreshing (Always Shows 100%)**
+>
+> Some users have reported that the quota always shows 100% and doesn't refresh. This is likely due to changes in the official API mechanism.
+>
+> **Temporary Solution**: Set your proxy node to a US-based server.
+
 > [!NOTE]
 > This plugin is an unofficial tool and has no affiliation with Antigravity.
 > This plugin relies on internal implementation details of the Antigravity language server, which may change at any time.
