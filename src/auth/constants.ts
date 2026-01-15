@@ -40,7 +40,7 @@ export const CALLBACK_HOST = '127.0.0.1';
 export const CALLBACK_PATH = '/callback';
 
 // 超时配置 (毫秒)
-export const AUTH_TIMEOUT_MS = 60000;  // 1 分钟
+export const AUTH_TIMEOUT_MS = 180000;  // 3 分钟
 export const API_TIMEOUT_MS = 10000;   // 10 秒
 
 // 重试配置
