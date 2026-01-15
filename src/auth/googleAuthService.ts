@@ -319,7 +319,8 @@ export class GoogleAuthService {
             const errorMessage = e instanceof Error ? e.message : String(e);
             logger.error('GoogleAuth', `Login with refresh_token failed: ${errorMessage}`);
             this.lastError = errorMessage;
-            this.setState(AuthState.ERROR);
+            await this.tokenStorage.clearToken();
+            this.setState(AuthState.NOT_AUTHENTICATED);
             vscode.window.showErrorMessage(LocalizationService.getInstance().t('login.error.localToken', { error: errorMessage }));
             return false;
         }

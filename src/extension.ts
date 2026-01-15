@@ -520,6 +520,10 @@ async function initializeGoogleApiMethod(
         
         // 不等待弹窗响应，直接返回
         return;
+      } else {
+        vscode.window.showWarningMessage(
+          localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+        );
       }
     }
     
@@ -865,6 +869,10 @@ function handleConfigChange(config: Config): void {
                 // 登录失败，继续显示未登录状态
               }
               // 用户选择手动登录或关闭弹窗，显示未登录状态
+            } else {
+              vscode.window.showWarningMessage(
+                localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+              );
             }
           }
           

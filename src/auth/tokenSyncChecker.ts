@@ -272,6 +272,12 @@ export class TokenSyncChecker {
             logger.info('TokenSyncChecker', `User selection: ${selection || 'dismissed'}`);
             if (selection === useLocalToken) {
                 const refreshToken = await extractRefreshTokenFromAntigravity();
+                if (!refreshToken) {
+                    vscode.window.showWarningMessage(
+                        localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+                    );
+                    return;
+                }
                 if (refreshToken) {
                     const success = await googleAuthService.loginWithRefreshToken(refreshToken);
                     if (success && onLocalTokenLogin) {
@@ -320,11 +326,15 @@ export class TokenSyncChecker {
                 if (selection === syncLabel) {
                     // 用户选择同步，使用新的 token 登录
                     const newToken = await extractRefreshTokenFromAntigravity();
-                    if (newToken) {
-                        const success = await googleAuthService.loginWithRefreshToken(newToken);
-                        if (success && onTokenChanged) {
-                            onTokenChanged();
-                        }
+                    if (!newToken) {
+                        vscode.window.showWarningMessage(
+                            localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+                        );
+                        return;
+                    }
+                    const success = await googleAuthService.loginWithRefreshToken(newToken);
+                    if (success && onTokenChanged) {
+                        onTokenChanged();
                     }
                 } else if (selection === keepLabel) {
                     // 用户选择保持当前，转换为手动登录，不再检查

@@ -68,6 +68,7 @@ export type TranslationKey =
     | 'login.success.localToken'
     | 'login.error.google'
     | 'login.error.localToken'
+    | 'login.error.localTokenImport'
     | 'logout.success'
 
     // Dev tools
