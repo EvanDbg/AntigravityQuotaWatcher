@@ -52,6 +52,19 @@ interface TokenResponse {
     scope: string;
 }
 
+class OAuthTokenRequestError extends Error {
+    public readonly oauthError: string;
+    public readonly oauthErrorDescription?: string;
+
+    constructor(oauthError: string, oauthErrorDescription?: string) {
+        const descriptionPart = oauthErrorDescription ? ` - ${oauthErrorDescription}` : '';
+        super(`Token error: ${oauthError}${descriptionPart}`);
+        this.name = 'OAuthTokenRequestError';
+        this.oauthError = oauthError;
+        this.oauthErrorDescription = oauthErrorDescription;
+    }
+}
+
 /**
  * 用户信息响应类型
  */
@@ -119,9 +132,9 @@ export class GoogleAuthService {
                 } catch (e) {
                     // 刷新失败，设置为 TOKEN_EXPIRED 状态
                     // 后续 getValidAccessToken() 会再次尝试刷新
-                    logger.warn('GoogleAuth', `Token refresh failed during init: ${e}`);
-                    this.setState(AuthState.TOKEN_EXPIRED);
-                    logger.info('GoogleAuth', 'Set state to TOKEN_EXPIRED (refresh failed, will retry on demand)');
+                    const nextState = this.classifyRefreshFailure(e);
+                    logger.warn('GoogleAuth', `Token refresh failed during init, nextState=${nextState}: ${e}`);
+                    this.setState(nextState);
                 }
             } else {
                 // Token 未过期，设置为已认证状态
@@ -490,7 +503,7 @@ export class GoogleAuthService {
             const errorMessage = e instanceof Error ? e.message : String(e);
             logger.error('GoogleAuth', `Token refresh failed: ${errorMessage}`);
             this.lastError = errorMessage;
-            this.setState(AuthState.TOKEN_EXPIRED);
+            this.setState(this.classifyRefreshFailure(e));
             throw e;
         }
     }
@@ -498,6 +511,24 @@ export class GoogleAuthService {
     /**
      * 遮蔽 token，只显示前6位和后4位
      */
+    private classifyRefreshFailure(error: unknown): AuthState {
+        if (error instanceof Error && error.message === 'No refresh token available') {
+            return AuthState.NOT_AUTHENTICATED;
+        }
+        return this.isReauthRequired(error) ? AuthState.TOKEN_EXPIRED : AuthState.ERROR;
+    }
+
+    private isReauthRequired(error: unknown): boolean {
+        if (error instanceof OAuthTokenRequestError) {
+            return error.oauthError === 'invalid_grant';
+        }
+        if (error instanceof Error) {
+            const msg = error.message.toLowerCase();
+            return msg.includes('invalid_grant') || msg.includes('invalid_rapt');
+        }
+        return false;
+    }
+
     private maskToken(token: string): string {
         if (token.length <= 14) {
             return '***';
@@ -587,7 +618,7 @@ export class GoogleAuthService {
                     try {
                         const response = JSON.parse(data);
                         if (response.error) {
-                            reject(new Error(`Token error: ${response.error} - ${response.error_description}`));
+                            reject(new OAuthTokenRequestError(response.error, response.error_description));
                         } else {
                             resolve(response as TokenResponse);
                         }
