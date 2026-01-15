@@ -70,7 +70,7 @@ export const en: TranslationMap = {
     'login.success.localToken': 'Successfully logged in with local Antigravity account!',
     'login.error.google': 'Google login failed: {error}',
     'login.error.localToken': 'Login with local token failed: {error}',
-    'login.error.localTokenImport': 'Failed to import local Antigravity login. Please sign in manually.',
+    'login.error.localTokenImport': 'Local Antigravity login not detected. Please click the status bar in the bottom right to sign in manually.',
     'logout.success': 'Logged out from Google account',
 
     // Dev tools

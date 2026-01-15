@@ -259,12 +259,12 @@ export class TokenSyncChecker {
         const googleAuthService = GoogleAuthService.getInstance();
 
         try {
-            const useLocalToken = localizationService.t('notify.useLocalToken') || '使用本地 Token 登录';
-            const manualLogin = localizationService.t('notify.manualLogin') || '手动登录';
+            const useLocalToken = localizationService.t('notify.useLocalToken');
+            const manualLogin = localizationService.t('notify.manualLogin');
 
             logger.info('TokenSyncChecker', 'Showing local token prompt');
             const selection = await vscode.window.showInformationMessage(
-                localizationService.t('notify.localTokenDetected') || '检测到本地 Antigravity 已登录，是否使用该账号？',
+                localizationService.t('notify.localTokenDetected'),
                 useLocalToken,
                 manualLogin
             );
@@ -274,7 +274,7 @@ export class TokenSyncChecker {
                 const refreshToken = await extractRefreshTokenFromAntigravity();
                 if (!refreshToken) {
                     vscode.window.showWarningMessage(
-                        localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+                        localizationService.t('login.error.localTokenImport')
                     );
                     return;
                 }
@@ -310,13 +310,13 @@ export class TokenSyncChecker {
         try {
             if (status === TokenSyncStatus.TOKEN_CHANGED) {
                 // Token 变更（切换账号）
-                const syncLabel = localizationService.t('notify.syncToken') || '同步';
-                const keepLabel = localizationService.t('notify.keepCurrentToken') || '保持当前';
+                const syncLabel = localizationService.t('notify.syncToken');
+                const keepLabel = localizationService.t('notify.keepCurrentToken');
 
                 logger.info('TokenSyncChecker', 'Showing token changed prompt');
                 // 使用模态对话框，确保用户必须做出选择，不会自动消失
                 const selection = await vscode.window.showInformationMessage(
-                    localizationService.t('notify.tokenChanged') || '检测到 Antigravity 账号已变更，是否同步？',
+                    localizationService.t('notify.tokenChanged'),
                     { modal: true },
                     syncLabel,
                     keepLabel
@@ -328,7 +328,7 @@ export class TokenSyncChecker {
                     const newToken = await extractRefreshTokenFromAntigravity();
                     if (!newToken) {
                         vscode.window.showWarningMessage(
-                            localizationService.t('login.error.localTokenImport') || '本地 Antigravity 登录导入失败，请手动登录。'
+                            localizationService.t('login.error.localTokenImport')
                         );
                         return;
                     }
@@ -344,13 +344,13 @@ export class TokenSyncChecker {
                 
             } else if (status === TokenSyncStatus.TOKEN_REMOVED) {
                 // Token 被移除（退出登录）
-                const syncLogoutLabel = localizationService.t('notify.syncLogout') || '同步退出';
-                const keepLoginLabel = localizationService.t('notify.keepLogin') || '保持登录';
+                const syncLogoutLabel = localizationService.t('notify.syncLogout');
+                const keepLoginLabel = localizationService.t('notify.keepLogin');
 
                 logger.info('TokenSyncChecker', 'Showing token removed prompt');
                 // 使用模态对话框，确保用户必须做出选择，不会自动消失
                 const selection = await vscode.window.showInformationMessage(
-                    localizationService.t('notify.tokenRemoved') || '检测到 Antigravity 已退出登录，是否同步退出？',
+                    localizationService.t('notify.tokenRemoved'),
                     { modal: true },
                     syncLogoutLabel,
                     keepLoginLabel
