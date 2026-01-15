@@ -6,11 +6,11 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import initSqlJs, { SqlJsStatic } from 'sql.js';
 import { logger } from '../logger';
 
-const execAsync = promisify(exec);
+// 缓存 sql.js 初始化，避免重复加载 wasm
+let sqlInitPromise: Promise<SqlJsStatic> | null = null;
 
 /**
  * 获取 Antigravity 数据库路径
@@ -51,19 +51,31 @@ export async function extractRefreshTokenFromAntigravity(): Promise<string | nul
 
         logger.debug('TokenExtractor', 'Attempting to extract token from:', dbPath);
 
-        // 使用 sqlite3 CLI 读取数据
-        const { stdout } = await execAsync(
-            `sqlite3 "${dbPath}" "SELECT value FROM ItemTable WHERE key = 'jetskiStateSync.agentManagerInitState'"`,
-            { timeout: 5000 }
-        );
+        const dbBuffer = await fs.promises.readFile(dbPath);
+        const SQL = await getSqlInstance();
+        const db = new SQL.Database(dbBuffer);
+        const stmt = db.prepare("SELECT value FROM ItemTable WHERE key = $key");
+        stmt.bind({ $key: 'jetskiStateSync.agentManagerInitState' });
 
-        if (!stdout.trim()) {
+        if (!stmt.step()) {
             console.log('[AntigravityTokenExtractor] No login state found in database');
+            stmt.free();
+            db.close();
+            return null;
+        }
+
+        const row = stmt.getAsObject();
+        const base64Data = typeof row.value === 'string' ? row.value.trim() : '';
+
+        stmt.free();
+        db.close();
+
+        if (!base64Data) {
+            console.log('[AntigravityTokenExtractor] Login state empty');
             return null;
         }
 
         // Base64 解码
-        const base64Data = stdout.trim();
         const buffer = Buffer.from(base64Data, 'base64');
 
         // 解析 Protobuf 提取 refresh_token
@@ -169,17 +181,30 @@ function readVarint(buffer: Buffer, pos: number): { value: number; newPos: numbe
         }
         shift += 7;
 
-        // 防止无限循环：Varint 最多 10 字节（64 位）
+        // 防止无限循环：Varint 最多 10 字节（70 位）
         if (shift > 63) {
             break;
         }
     }
 
-    // 转换回 number，对于 field number 和 length 来说足够了
-    // 如果值超过 Number.MAX_SAFE_INTEGER，截断为安全范围
+    // 转换为 number
     const numValue = result <= BigInt(Number.MAX_SAFE_INTEGER)
         ? Number(result)
         : Number.MAX_SAFE_INTEGER;
 
     return { value: numValue, newPos: pos };
+}
+
+/**
+ * 获取 sql.js 实例，并设置 wasm 定位
+ */
+async function getSqlInstance(): Promise<SqlJsStatic> {
+    if (!sqlInitPromise) {
+        // 在扩展环境中，wasm 文件位于 node_modules/sql.js/dist/
+        const wasmPath = path.join(__dirname, '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+        sqlInitPromise = initSqlJs({
+            locateFile: () => wasmPath
+        });
+    }
+    return sqlInitPromise;
 }
