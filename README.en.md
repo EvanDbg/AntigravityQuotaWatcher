@@ -13,7 +13,7 @@
 
 > [!NOTE]
 > This plugin now supports VS Code fork IDEs (WindSurf, Kiro, VS Code, etc.) from V0.9.0.
-> To watch model quotas in fork IDEs, switch to the **GOOGLE_API** method in settings to get model quotas (this method requires logging in with a Google account).
+> To watch model quotas in fork IDEs, switch to the **GOOGLE_API** method in settings to get model quotas.
 > This method does not depend on the Antigravity local environment, making it also suitable for remote SSH projects.
 
 
@@ -79,6 +79,7 @@ How to export logs:
 - **Status Bar Display**: Shows current quota in the VS Code bottom status bar
 - **Smart Alerts**: Automatically changes color when quota is low
 - **Auto Detection**: No manual configuration needed, automatically detects Antigravity service port and authentication information
+- **Local Login Sync**: Automatically detects Antigravity IDE login status and supports one-click import of local account credentials
 
 ## Configuration Options
 
