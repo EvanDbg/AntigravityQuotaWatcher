@@ -54,6 +54,22 @@
 1. 打开命令面板（`Ctrl+Shift+P` 或 `Cmd+Shift+P`）
 2. 输入并执行 `Antigravity Quota Watcher: Google Logout`
 
+### 自动检测本地 Token
+
+如果您已经在 Antigravity IDE 中登录了 Google 账号，插件会自动检测本地的登录凭证：
+
+1. **未登录状态**：插件会检测本地 Antigravity 是否已登录，如果检测到有效的登录凭证，会弹窗询问是否直接使用本地账号登录
+2. **已登录状态（使用本地 Token）**：如果您的账号是通过本地 Token 导入的，插件会定期检查本地 Antigravity 的登录状态变化：
+   - 如果本地切换了账号，会弹窗询问是否同步新账号
+   - 如果本地退出了登录，会弹窗询问是否同步退出
+
+> [!TIP]
+> 本地 Token 检测路径：
+> - **Windows**: `%APPDATA%\Antigravity\User\globalStorage\state.vscdb`
+> - **macOS**: `~/Library/Application Support/Antigravity/User/globalStorage/state.vscdb`
+> - **Linux**: `~/.config/Antigravity/User/globalStorage/state.vscdb`
+
+
 ## PowerShell 模式（仅 Windows 系统可用）
 - **默认值**：`true`，如果false，则使用wmic检测进程
 - **说明**：使用 PowerShell 模式检测进程

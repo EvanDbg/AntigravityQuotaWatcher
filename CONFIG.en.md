@@ -53,6 +53,21 @@ If you choose the `GOOGLE_API` method, you need to login with your Google accoun
 1. Open command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`)
 2. Type and execute `Antigravity Quota Watcher: Google Logout`
 
+### Auto-detect Local Token
+
+If you have already logged into your Google account in the Antigravity IDE, the plugin will automatically detect local login credentials:
+
+1. **Not Logged In**: The plugin will detect if local Antigravity is logged in. If valid credentials are detected, a prompt will ask whether to use the local account to log in directly
+2. **Logged In (using Local Token)**: If your account was imported via local Token, the plugin will periodically check for changes in local Antigravity login status:
+   - If the local account is switched, a prompt will ask whether to sync the new account
+   - If the local account logs out, a prompt will ask whether to sync the logout
+
+> [!TIP]
+> Local Token detection paths:
+> - **Windows**: `%APPDATA%\Antigravity\User\globalStorage\state.vscdb`
+> - **macOS**: `~/Library/Application Support/Antigravity/User/globalStorage/state.vscdb`
+> - **Linux**: `~/.config/Antigravity/User/globalStorage/state.vscdb`
+
 
 ## PowerShell Mode (Windows only)
 - **Default**: `true`, if false, uses wmic to detect processes
