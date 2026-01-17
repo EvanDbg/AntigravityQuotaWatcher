@@ -193,7 +193,7 @@ export class QuotaService {
 
   async startPolling(intervalMs: number): Promise<void> {
     logger.info('QuotaService', `startPolling called with interval=${intervalMs}ms, apiMethod=${this.apiMethod}`);
-    
+
     // GOOGLE_API 模式：未登录或 token 过期时不启动轮询，避免无意义请求
     if (this.apiMethod === QuotaApiMethod.GOOGLE_API) {
       const authState = this.googleAuthService.getAuthState();
@@ -595,7 +595,10 @@ export class QuotaService {
       // 获取项目信息
       logger.debug('QuotaService', 'Google API: Loading project info...');
       const projectInfo = await this.googleApiClient.loadProjectInfo(accessToken);
-      logger.info('QuotaService', `Google API: Project loaded, tier=${projectInfo.tier}, projectId=${projectInfo.projectId}`);
+      if (!projectInfo.projectId) {
+        logger.warn('QuotaService', `Google API: Project ID is empty (Individual tier user without Cloud Project)`);
+      }
+      logger.info('QuotaService', `Google API: Project loaded, tier=${projectInfo.tier}, projectId=${projectInfo.projectId || '(empty)'}`);
 
       // 获取模型配额
       logger.debug('QuotaService', 'Google API: Fetching models quota...');
