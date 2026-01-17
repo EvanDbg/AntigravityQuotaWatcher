@@ -137,7 +137,7 @@ export class GoogleCloudCodeClient {
     ): Promise<ModelsQuotaResponse> {
         // projectId 可能为空 仅记录警告，继续尝试 API 调用
         if (!projectId) {
-            logger.warn('GoogleAPI', 'fetchModelsQuota: projectId is empty (Individual tier user?), attempting API call without project');
+            logger.warn('GoogleAPI', 'fetchModelsQuota: projectId is empty, attempting API call without project');
         }
 
         // 如果 projectId 为空，不传 project 字段
