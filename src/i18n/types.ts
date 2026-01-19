@@ -95,7 +95,18 @@ export type TranslationKey =
     | 'dashboard.loginLocalToken'
     | 'dashboard.logout'
     | 'dashboard.settings'
-    | 'dashboard.quotaOverview';
+    | 'dashboard.refreshPanel'
+    | 'dashboard.quotaOverview'
+    | 'dashboard.weeklyLimit'
+
+    // Weekly Limit Check
+    | 'weeklyLimit.checking'
+    | 'weeklyLimit.ok'
+    | 'weeklyLimit.rateLimited'
+    | 'weeklyLimit.weeklyLimited'
+    | 'weeklyLimit.capacityExhausted'
+    | 'weeklyLimit.error'
+    | 'weeklyLimit.notLoggedIn';
 
 export interface TranslationMap {
     [key: string]: string;

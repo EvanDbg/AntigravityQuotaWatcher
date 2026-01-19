@@ -97,5 +97,16 @@ export const en: TranslationMap = {
     'dashboard.loginLocalToken': 'Local Token Login',
     'dashboard.logout': 'Logout',
     'dashboard.settings': 'Edit Config',
-    'dashboard.quotaOverview': 'Quota Overview'
+    'dashboard.refreshPanel': 'Refresh Panel',
+    'dashboard.quotaOverview': 'Quota Overview',
+    'dashboard.weeklyLimit': 'Weekly Limit',
+
+    // Weekly Limit Check
+    'weeklyLimit.checking': 'Checking weekly limit for {model}...',
+    'weeklyLimit.ok': '✅ {pool} pool: Quota OK',
+    'weeklyLimit.rateLimited': '🟡 {pool} pool: Rate limited (5h), reset in {hours}h',
+    'weeklyLimit.weeklyLimited': '🔴 {pool} pool: Weekly limit reached! Reset in {days}d {hours}h',
+    'weeklyLimit.capacityExhausted': '⚠️ Model {model} server overloaded, please try again later',
+    'weeklyLimit.error': '❌ Check failed: {error}',
+    'weeklyLimit.notLoggedIn': 'Please login first to check weekly limit'
 };

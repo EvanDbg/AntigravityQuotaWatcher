@@ -104,6 +104,14 @@ export class WebviewPanelService {
             case 'openSettings':
                 vscode.commands.executeCommand('workbench.action.openSettings', 'antigravityQuotaWatcher');
                 break;
+            case 'refreshPanel':
+                this.updateContent();
+                this.postMessage({ type: 'stateUpdate', state: this.state });
+                break;
+            case 'checkWeeklyLimit':
+                // 周限检测，传递模型名称
+                vscode.commands.executeCommand('antigravity-quota-watcher.checkWeeklyLimit', message.model);
+                break;
             case 'ready':
                 // Webview 加载完成，发送当前状态
                 this.postMessage({ type: 'stateUpdate', state: this.state });
@@ -211,6 +219,14 @@ export class WebviewPanelService {
         .progress-critical { background: #f44336; }
         .progress-depleted { background: #1a1a1a; }
         .progress-bar.depleted { background: #1a1a1a; }
+
+        .btn-check-limit {
+            padding: 2px 6px; border: none; border-radius: 3px; cursor: pointer;
+            font-size: 11px; background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+        .btn-check-limit:hover { opacity: 0.85; }
+        .btn-check-limit:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -284,22 +300,26 @@ export class WebviewPanelService {
                 <button class="btn btn-secondary" id="btnLoginLocalToken">${t('dashboard.loginLocalToken')}</button>
                 <button class="btn btn-secondary" id="btnLogout">${t('dashboard.logout')}</button>
                 <button class="btn btn-secondary" id="btnSettings">${t('dashboard.settings')}</button>
+                <button class="btn btn-secondary" id="btnRefreshPanel">${t('dashboard.refreshPanel')}</button>
             </div>
         </div>
 
         <!-- 配额概览 (有数据时显示) -->
         <div id="quotaSection" class="section hidden">
             <div class="section-title">${t('dashboard.quotaOverview')}</div>
+            <!-- 暂时隐藏提示词额度
             <div id="promptCreditsRow" class="info-row hidden">
                 <span class="info-label">${t('tooltip.credits')}</span>
                 <span id="promptCreditsValue" class="info-value">-</span>
             </div>
+            -->
             <table class="quota-table">
                 <thead>
                     <tr>
                         <th>${t('tooltip.model')}</th>
                         <th>${t('tooltip.remaining')}</th>
                         <th>${t('tooltip.resetTime')}</th>
+                        <th id="weeklyLimitHeader" class="hidden">${t('dashboard.weeklyLimit')}</th>
                     </tr>
                 </thead>
                 <tbody id="quotaTableBody"></tbody>
@@ -326,8 +346,9 @@ export class WebviewPanelService {
         const errorRow = $('errorRow');
         const errorValue = $('errorValue');
         const quotaSection = $('quotaSection');
-        const promptCreditsRow = $('promptCreditsRow');
-        const promptCreditsValue = $('promptCreditsValue');
+        // 暂时隐藏提示词额度
+        // const promptCreditsRow = $('promptCreditsRow');
+        // const promptCreditsValue = $('promptCreditsValue');
         const quotaTableBody = $('quotaTableBody');
 
         // Buttons
@@ -337,6 +358,7 @@ export class WebviewPanelService {
         $('btnLoginLocalToken').onclick = () => vscode.postMessage({ command: 'loginLocalToken' });
         $('btnLogout').onclick = () => vscode.postMessage({ command: 'logout' });
         $('btnSettings').onclick = () => vscode.postMessage({ command: 'openSettings' });
+        $('btnRefreshPanel').onclick = () => vscode.postMessage({ command: 'refreshPanel' });
 
         function maskToken(token) {
             if (!token || token.length <= 14) return '***';
@@ -372,6 +394,9 @@ export class WebviewPanelService {
             projectIdRow.classList.toggle('hidden', !isGoogleApi || !state.projectId);
             projectIdValue.textContent = state.projectId || '-';
 
+            // 周限检测列 - 仅 Google API 模式显示
+            $('weeklyLimitHeader').classList.toggle('hidden', !isGoogleApi);
+
             // 登录/登出按钮状态 - 仅 Google API 模式显示
             $('btnLoginOAuth').classList.toggle('hidden', !isGoogleApi || state.isLoggedIn);
             $('btnLoginLocalToken').classList.toggle('hidden', !isGoogleApi || state.isLoggedIn);
@@ -403,14 +428,14 @@ export class WebviewPanelService {
             if (snapshot && snapshot.models && snapshot.models.length > 0) {
                 quotaSection.classList.remove('hidden');
 
-                // Prompt Credits
-                if (snapshot.promptCredits) {
-                    promptCreditsRow.classList.remove('hidden');
-                    const pc = snapshot.promptCredits;
-                    promptCreditsValue.textContent = pc.available + ' / ' + pc.monthly + ' (' + pc.remainingPercentage.toFixed(1) + '%)';
-                } else {
-                    promptCreditsRow.classList.add('hidden');
-                }
+                // Prompt Credits - 暂时隐藏
+                // if (snapshot.promptCredits) {
+                //     promptCreditsRow.classList.remove('hidden');
+                //     const pc = snapshot.promptCredits;
+                //     promptCreditsValue.textContent = pc.available + ' / ' + pc.monthly + ' (' + pc.remainingPercentage.toFixed(1) + '%)';
+                // } else {
+                //     promptCreditsRow.classList.add('hidden');
+                // }
 
                 // Models - 按名称排序保持稳定顺序
                 const sortedModels = [...snapshot.models].sort((a, b) => a.label.localeCompare(b.label));
@@ -419,12 +444,27 @@ export class WebviewPanelService {
                     const pctStr = pct.toFixed(1) + '%';
                     const progressClass = getProgressClass(pct);
                     const barClass = pct <= 0 ? 'progress-bar depleted' : 'progress-bar';
+                    // 周限检测按钮 - 仅 Google API 模式显示
+                    const checkBtn = isGoogleApi 
+                        ? '<td><button class="btn-check-limit" data-model="' + encodeURIComponent(m.modelId || m.label) + '">检测</button></td>'
+                        : '';
                     return '<tr>' +
                         '<td>' + m.label + '</td>' +
                         '<td><div class="' + barClass + '"><div class="progress-fill ' + progressClass + '" style="width:' + pct + '%"></div></div> ' + pctStr + '</td>' +
                         '<td>' + m.timeUntilResetFormatted + '</td>' +
+                        checkBtn +
                         '</tr>';
                 }).join('');
+
+                // 绑定周限检测按钮事件
+                if (isGoogleApi) {
+                    quotaTableBody.querySelectorAll('.btn-check-limit').forEach(btn => {
+                        btn.onclick = function() {
+                            const model = decodeURIComponent(this.getAttribute('data-model'));
+                            vscode.postMessage({ command: 'checkWeeklyLimit', model: model });
+                        };
+                    });
+                }
             } else {
                 quotaSection.classList.add('hidden');
             }

@@ -33,6 +33,7 @@ let lastAutoRedetectTime: number = 0;
 
 // 缓存最后一次检测到的端口信息（用于 Dashboard 显示）
 let cachedPortInfo: { connectPort?: number; httpPort?: number; csrfToken?: string } = {};
+let cachedAntigravityProjectId: string | undefined;
 
 /**
  * Called when the extension is activated
@@ -494,15 +495,15 @@ export async function activate(context: vscode.ExtensionContext) {
     () => {
       logger.debug('Extension', 'openDashboard command invoked');
       const panel = WebviewPanelService.createOrShow(context.extensionUri);
-      
+
       // 初始化 Dashboard 状态
       const currentConfig = configService?.getConfig();
       const currentApiMethod = getApiMethodFromConfig(currentConfig?.apiMethod || 'GET_USER_STATUS');
       const authState = googleAuthService?.getAuthState();
-      
+
       // 从 StatusBarService 获取缓存的快照
       const cachedSnapshot = statusBarService?.getLastSnapshot();
-      
+
       const initialState: DashboardState = {
         apiMethod: currentApiMethod,
         pollingInterval: currentConfig?.pollingInterval,
@@ -512,9 +513,107 @@ export async function activate(context: vscode.ExtensionContext) {
         connectPort: cachedPortInfo.connectPort,
         httpPort: cachedPortInfo.httpPort,
         csrfToken: cachedPortInfo.csrfToken,
+        // Google API 特有
+        projectId: cachedSnapshot?.projectId,
       };
-      
+
       panel.updateState(initialState);
+    }
+  );
+
+  // Command: Check Weekly Limit
+  const checkWeeklyLimitCommand = vscode.commands.registerCommand(
+    'antigravity-quota-watcher.checkWeeklyLimit',
+    async (modelName?: string) => {
+      logger.debug('Extension', 'checkWeeklyLimit command invoked', modelName);
+
+      // 检查是否已登录
+      if (!googleAuthService || googleAuthService.getAuthState().state !== AuthState.AUTHENTICATED) {
+        vscode.window.showWarningMessage(localizationService.t('weeklyLimit.notLoggedIn'));
+        return;
+      }
+
+      if (!modelName) {
+        logger.warn('Extension', 'checkWeeklyLimit: no model specified');
+        return;
+      }
+
+      // 导入周限检测器
+      const { WeeklyLimitChecker, getQuotaPool, getPoolDisplayName } = await import('./api/weeklyLimitChecker');
+      const checker = WeeklyLimitChecker.getInstance();
+      const pool = getQuotaPool(modelName);
+      const poolName = getPoolDisplayName(pool);
+
+      // 显示检测中提示
+      vscode.window.showInformationMessage(
+        localizationService.t('weeklyLimit.checking', { model: modelName })
+      );
+
+      try {
+        // 获取 access token
+        const accessToken = await googleAuthService.getValidAccessToken();
+
+        // Fetch Antigravity project ID for weekly limit checks
+        const { AntigravityClient } = await import('./api/antigravityClient');
+        const antigravityClient = AntigravityClient.getInstance();
+        let antigravityProjectId = cachedAntigravityProjectId;
+        if (!antigravityProjectId) {
+          const antigravityProjectInfo = await antigravityClient.loadProjectInfo(accessToken);
+          antigravityProjectId = antigravityProjectInfo.projectId;
+          cachedAntigravityProjectId = antigravityProjectId;
+        }
+        if (!antigravityProjectId) {
+          throw new Error('Antigravity projectId unavailable');
+        }
+
+        // Keep the Cloud Code project ID for logging
+        let cloudProjectId = statusBarService?.getLastSnapshot()?.projectId;
+        if (!cloudProjectId) {
+          const { GoogleCloudCodeClient } = await import('./api/googleCloudCodeClient');
+          const apiClient = GoogleCloudCodeClient.getInstance();
+          const projectInfo = await apiClient.loadProjectInfo(accessToken);
+          cloudProjectId = projectInfo.projectId;
+        }
+        logger.info(
+          'Extension',
+          `Weekly limit projectId: antigravity=${antigravityProjectId}, cloudcode=${cloudProjectId || 'unknown'}`
+        );
+
+        // 执行周限检测
+        const result = await checker.checkModel(accessToken, antigravityProjectId, modelName);
+
+        // 显示结果
+        if (result.status === 'ok') {
+          vscode.window.showInformationMessage(
+            localizationService.t('weeklyLimit.ok', { pool: poolName })
+          );
+        } else if (result.status === 'rate_limited') {
+          const hours = result.hoursUntilReset ?? 0;
+          vscode.window.showWarningMessage(
+            localizationService.t('weeklyLimit.rateLimited', { pool: poolName, hours: hours.toString() })
+          );
+        } else if (result.status === 'weekly_limited') {
+          const totalHours = result.hoursUntilReset ?? 0;
+          const days = Math.floor(totalHours / 24);
+          const hours = totalHours % 24;
+          vscode.window.showErrorMessage(
+            localizationService.t('weeklyLimit.weeklyLimited', { pool: poolName, days: days.toString(), hours: hours.toString() })
+          );
+        } else if (result.status === 'capacity_exhausted') {
+          vscode.window.showWarningMessage(
+            localizationService.t('weeklyLimit.capacityExhausted', { model: result.errorMessage || modelName })
+          );
+        } else {
+          vscode.window.showErrorMessage(
+            localizationService.t('weeklyLimit.error', { error: result.errorMessage || 'Unknown error' })
+          );
+        }
+      } catch (error: any) {
+        logger.error('Extension', 'Weekly limit check failed:', error);
+        vscode.window.showErrorMessage(
+          localizationService.t('weeklyLimit.error', { error: error.message || String(error) })
+        );
+      }
     }
   );
 
@@ -528,6 +627,7 @@ export async function activate(context: vscode.ExtensionContext) {
     loginLocalTokenCommand,
     googleLogoutCommand,
     openDashboardCommand,
+    checkWeeklyLimitCommand,
     configChangeDisposable,
     windowFocusDisposable,
     authStateDisposable,
@@ -814,7 +914,11 @@ function registerQuotaServiceCallbacks(): void {
     statusBarService?.updateDisplay(snapshot);
 
     // 更新 Dashboard
-    updateDashboardState({ quotaSnapshot: snapshot, lastError: undefined });
+    updateDashboardState({
+      quotaSnapshot: snapshot,
+      lastError: undefined,
+      projectId: snapshot.projectId
+    });
 
     // 对于 GOOGLE_API 方法，检查 Token 同步状态
     const apiMethod = quotaService?.getApiMethod();
@@ -979,7 +1083,7 @@ function handleConfigChange(config: Config): void {
         updateDashboardState({
           isLoggedIn: authState.state === AuthState.AUTHENTICATED
         });
-        
+
         if (authState.state === AuthState.NOT_AUTHENTICATED) {
           quotaService.stopPolling();
 

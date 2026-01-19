@@ -7,7 +7,7 @@
 >
 > 近期有用户反馈配额一直显示100%不刷新的问题，推测可能是官方接口机制变更导致。
 >
-> **临时解决方案**：将代理节点设置为美国地区的节点。
+> **临时解决方案**：~~将代理节点设置为美国地区的节点~~,该方法目前似乎也已经失效，目前的配额递减规律是20%更新一次，100%->80%->60%...。
 
 > [!NOTE]
 > 本插件为非官方工具，与 Antigravity 没有任何关联。
@@ -137,6 +137,7 @@
 ## 致谢
  * Google API 配额获取方法来自 [Antigravity-Manager](https://github.com/lbjlaq/Antigravity-Manager) 项目，感谢作者的贡献！
  * 参考了 [anti-quota](https://github.com/fhyfhy17/anti-quota) 获取 Antigravity 本地登录账号Token的方法，感谢作者的贡献！
+ * 周限检测功能参考了 [gcli2api](https://github.com/su-kaka/gcli2api) 项目的 2api 方法，感谢作者的贡献！
 
 [![Star History Chart](https://api.star-history.com/svg?repos=wusimpl/AntigravityQuotaWatcher&type=date&legend=top-left)](https://www.star-history.com/#wusimpl/AntigravityQuotaWatcher&type=date&legend=top-left)
 

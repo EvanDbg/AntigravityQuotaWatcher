@@ -193,7 +193,7 @@ export class QuotaService {
 
   async startPolling(intervalMs: number): Promise<void> {
     logger.info('QuotaService', `startPolling called with interval=${intervalMs}ms, apiMethod=${this.apiMethod}`);
-    
+
     // GOOGLE_API 模式：未登录或 token 过期时不启动轮询，避免无意义请求
     if (this.apiMethod === QuotaApiMethod.GOOGLE_API) {
       const authState = this.googleAuthService.getAuthState();
@@ -630,6 +630,7 @@ export class QuotaService {
         models,
         planName: projectInfo.tier,
         userEmail,
+        projectId: projectInfo.projectId,
       };
     } catch (error) {
       if (error instanceof GoogleApiError) {

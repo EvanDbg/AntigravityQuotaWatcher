@@ -66,6 +66,7 @@ export interface QuotaSnapshot {
   models: ModelQuotaInfo[];
   planName?: string;
   userEmail?: string;  // Google 账号邮箱 (仅 GOOGLE_API 方法)
+  projectId?: string;  // Google Cloud Project ID (仅 GOOGLE_API 方法)
   isStale?: boolean;   // 数据是否过时 (网络问题或超时)
 }
 
