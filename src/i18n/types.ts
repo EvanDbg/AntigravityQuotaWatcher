@@ -98,6 +98,7 @@ export type TranslationKey =
     | 'dashboard.refreshPanel'
     | 'dashboard.quotaOverview'
     | 'dashboard.weeklyLimit'
+    | 'dashboard.weeklyLimitWarning'
 
     // Weekly Limit Check
     | 'weeklyLimit.checking'

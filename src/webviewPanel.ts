@@ -227,6 +227,38 @@ export class WebviewPanelService {
         }
         .btn-check-limit:hover { opacity: 0.85; }
         .btn-check-limit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .info-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: var(--vscode-inputValidation-warningBackground, #5c4813);
+            color: var(--vscode-inputValidation-warningForeground, #cca700);
+            font-size: 11px; font-weight: bold; cursor: help;
+            position: relative;
+        }
+        .info-icon:hover .tooltip {
+            visibility: visible; opacity: 1;
+        }
+        .tooltip {
+            visibility: hidden; opacity: 0;
+            position: absolute; bottom: 125%; left: 50%;
+            transform: translateX(-50%);
+            background: var(--vscode-editorWidget-background, #252526);
+            color: var(--vscode-editorWidget-foreground, #cccccc);
+            border: 1px solid var(--vscode-widget-border, #454545);
+            border-radius: 4px; padding: 6px 10px;
+            font-size: 12px; font-weight: normal;
+            white-space: nowrap; z-index: 100;
+            transition: opacity 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .tooltip::after {
+            content: '';
+            position: absolute; top: 100%; left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--vscode-widget-border, #454545);
+        }
     </style>
 </head>
 <body>
@@ -319,7 +351,7 @@ export class WebviewPanelService {
                         <th>${t('tooltip.model')}</th>
                         <th>${t('tooltip.remaining')}</th>
                         <th>${t('tooltip.resetTime')}</th>
-                        <th id="weeklyLimitHeader" class="hidden">${t('dashboard.weeklyLimit')}</th>
+                        <th id="weeklyLimitHeader" class="hidden">${t('dashboard.weeklyLimit')} <span id="weeklyLimitWarning" class="info-icon">⚠<span class="tooltip">${t('dashboard.weeklyLimitWarning')}</span></span></th>
                     </tr>
                 </thead>
                 <tbody id="quotaTableBody"></tbody>

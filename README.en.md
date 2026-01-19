@@ -195,16 +195,11 @@ Hover over the status bar to see remaining quota and next reset time for all mod
 
 ## Notes
 
-<details>
-<summary>Click to expand</summary>
-
 - First startup will delay 8 seconds before starting monitoring to avoid frequent requests
 - If the status bar shows an error, use the "Re-detect Port" command to fix it
 - **Windows Users**: If you encounter port detection errors, you can toggle the `forcePowerShell` option in settings.
 - This plugin is an unofficial tool and has no affiliation with Antigravity. This plugin relies on internal implementation details of the Antigravity language server, which may change at any time.
 - This plugin supports VS Code fork IDEs (WindSurf, Kiro, VS Code, etc.) from V0.9.0. To watch model quotas in fork IDEs, switch to the **GOOGLE_API** method in settings. This method does not depend on the Antigravity local environment, making it also suitable for remote SSH projects.
-
-</details>
 
 ## Acknowledgments
  * The Google API quota retrieval method comes from the [Antigravity-Manager](https://github.com/lbjlaq/Antigravity-Manager) project. Thanks to the author for the contribution!

@@ -100,11 +100,12 @@ export const zh_cn: TranslationMap = {
     'dashboard.refreshPanel': '刷新面板',
     'dashboard.quotaOverview': '配额概览',
     'dashboard.weeklyLimit': '周限检测',
+    'dashboard.weeklyLimitWarning': '周限检测功能需要消耗少量额度，请勿频繁使用',
 
     // 周限检测
     'weeklyLimit.checking': '正在检测 {model} 的周限状态...',
     'weeklyLimit.ok': '✅ {pool} 池: 配额正常',
-    'weeklyLimit.rateLimited': '🟡 {pool} 池: 频率限制 (5h)，{hours}小时{minutes}分钟后重置',
+    'weeklyLimit.rateLimited': '🟡 {pool} 池: 已触发小时频率限制，{hours}小时{minutes}分钟后重置额度',
     'weeklyLimit.weeklyLimited': '🔴 {pool} 池: 已触发周限！{days}天{hours}小时{minutes}分钟后重置',
     'weeklyLimit.capacityExhausted': '⚠️ 模型 {model} 服务器过载，请稍后重试',
     'weeklyLimit.error': '❌ 检测失败: {error}',
