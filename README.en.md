@@ -66,11 +66,16 @@ Search for `wusimpl Antigravity Quota Watcher @sort:name` in the extension marke
 
 ## Submitting Issues
 
+<details>
+<summary>Click to expand</summary>
+
 Please attach log files or log screenshots when submitting issues.
 
 How to export logs:
 ![Step 1](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue1.png)
 ![Step 2](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue2.png)
+
+</details>
 
 
 ## Features
@@ -80,8 +85,21 @@ How to export logs:
 - **Smart Alerts**: Automatically changes color when quota is low
 - **Auto Detection**: No manual configuration needed, automatically detects Antigravity service port and authentication information
 - **Local Login Sync**: Automatically detects Antigravity IDE login status and supports one-click import of local account credentials
+- **Dashboard Panel**: Provides quota overview, connection status, weekly limit detection and more
 
-## Weekly Limit Detection
+## Dashboard Panel
+
+Open the Dashboard panel via command palette `Antigravity: Open Dashboard`, which provides:
+
+- **Quota Overview**: Displays all model quotas and reset times in a table
+- **Connection Status**: Shows current API mode, port info, polling status, etc.
+- **Account Info**: Displays current logged-in account and subscription plan
+- **Quick Actions**: Refresh quota, re-detect port, login/logout, etc.
+
+![Dashboard](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/dashboard.jpg)
+
+<details>
+<summary><b>Weekly Limit Detection</b> (click to expand)</summary>
 
 In the Dashboard panel, you can check each model pool for weekly quota limits.
 
@@ -133,6 +151,8 @@ In the Dashboard panel, you can check each model pool for weekly quota limits.
 
 > Note: The 5-hour sliding window rate limit lasts at most 5 hours. If reset time exceeds 5 hours, it's definitely a weekly limit.
 
+</details>
+
 ## Configuration Options
 
 For detailed configuration instructions, please see: **[📖 Configuration Documentation](./CONFIG.en.md)**
@@ -147,6 +167,9 @@ Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) to open the command palett
 
 
 ## Status Bar Explanation
+
+<details>
+<summary>Click to expand</summary>
 
 Status bar display format:
 
@@ -176,6 +199,8 @@ You can customize `warningThreshold` and `criticalThreshold` in settings to adju
 ### Model Quota Details
 
 Hover over the status bar to see remaining quota and next reset time for all models. **Click the status bar to immediately refresh quota information**.
+
+</details>
 
 ## Notes
 

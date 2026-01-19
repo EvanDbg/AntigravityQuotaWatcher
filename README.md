@@ -69,11 +69,16 @@
 
 ## 提交Issue
 
+<details>
+<summary>点击展开</summary>
+
 请在提交issue时附上日志文件或者日志截图
 
 日志导出方法：
 ![步骤页面1](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue1.png)
 ![步骤页面2](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/issue2.png)
+
+</details>
 
 
 ##  功能特点
@@ -83,8 +88,21 @@
 - **智能预警**：配额不足时自动变色提醒
 - **自动检测**：无需手动配置，自动检测 Antigravity 服务端口和认证信息
 - **本地登录同步**：自动检测 Antigravity IDE 的登录状态，支持一键导入本地账号凭证
+- **Dashboard 面板**：提供配额概览、连接状态、周限检测等功能
 
-## 周限检测
+## Dashboard 面板
+
+通过命令面板执行 `Antigravity: 打开 Dashboard` 可打开 Dashboard 面板，提供以下功能：
+
+- **配额概览**：以表格形式展示所有模型的剩余配额和重置时间
+- **连接状态**：显示当前 API 模式、端口信息、轮询状态等
+- **账号信息**：显示当前登录账号和订阅计划
+- **快捷操作**：刷新配额、重新检测端口、登录/登出等
+
+![Dashboard](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/dashboard.jpg)
+
+<details>
+<summary><b>周限检测</b>（点击展开）</summary>
 
 在 Dashboard 面板中，可以对每个模型池进行周限检测，判断是否触发了周配额限制。
 
@@ -130,10 +148,12 @@
       >5h       ≤5h
        │         │
        ▼         ▼
-    ❌ 周限   ⚠️ 5h限
+    ❌ 周限   ⚠️ 5h限速
 ```
 
 > 注：5小时滑动窗口限速最长为5小时，超过5小时必定是周限。
+
+</details>
 
 ##  配置选项
 
@@ -149,6 +169,9 @@
 
 
 ## 状态栏说明
+
+<details>
+<summary>点击展开</summary>
 
 状态栏显示格式：
 
@@ -178,6 +201,8 @@
 ### 模型配额详情
 
 鼠标移动到状态栏会显示所有模型的剩余配额与下次重置时间。**点击状态栏可以立即刷新配额信息**。
+
+</details>
 
 ## 注意事项
 
