@@ -78,7 +78,7 @@ How to export logs:
 - **Local Login Sync**: Automatically detects Antigravity IDE login status and supports one-click import of local account credentials
 - **Dashboard Panel**: Provides quota overview, connection status, weekly limit detection and more
 
-## Dashboard Panel
+## Dashboard
 
 Open the Dashboard panel via command palette `Antigravity: Open Dashboard`, which provides:
 

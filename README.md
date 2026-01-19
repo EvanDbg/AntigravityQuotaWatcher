@@ -81,7 +81,7 @@
 - **本地登录同步**：自动检测 Antigravity IDE 的登录状态，支持一键导入本地账号凭证
 - **Dashboard 面板**：提供配额概览、连接状态、周限检测等功能
 
-## Dashboard 面板
+## Dashboard
 
 通过命令面板执行 `Antigravity: 打开 Dashboard` 可打开 Dashboard 面板，提供以下功能：
 
