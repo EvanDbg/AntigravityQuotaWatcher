@@ -13,6 +13,7 @@ import { versionInfo } from './versionInfo';
 import { registerDevCommands } from './devTools';
 import { GoogleAuthService, AuthState, AuthStateInfo, extractRefreshTokenFromAntigravity, hasAntigravityDb, TokenSyncChecker } from './auth';
 import { logger } from './logger';
+import { WebviewPanelService } from './webviewPanel';
 
 const NON_AG_PROMPT_KEY = 'nonAgSwitchPromptDismissed';
 
@@ -119,7 +120,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // quotaService 未初始化，根据 API 模式给出不同提示
         config = configService!.getConfig();
         const currentApiMethod = getApiMethodFromConfig(config.apiMethod);
-        
+
         if (currentApiMethod === QuotaApiMethod.GOOGLE_API) {
           // GOOGLE_API 模式下，提示用户需要先登录
           logger.debug('Extension', 'quotaService not initialized in GOOGLE_API mode, prompt login');
@@ -151,7 +152,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // quotaService 未初始化，根据 API 模式给出不同提示
         config = configService!.getConfig();
         const currentApiMethod = getApiMethodFromConfig(config.apiMethod);
-        
+
         if (currentApiMethod === QuotaApiMethod.GOOGLE_API) {
           // GOOGLE_API 模式下，提示用户需要先登录
           logger.debug('Extension', 'quotaService not initialized in GOOGLE_API mode, prompt login');
@@ -418,6 +419,15 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  // Command: Open Dashboard
+  const openDashboardCommand = vscode.commands.registerCommand(
+    'antigravity-quota-watcher.openDashboard',
+    () => {
+      logger.debug('Extension', 'openDashboard command invoked');
+      WebviewPanelService.createOrShow(context.extensionUri);
+    }
+  );
+
   // Add to context subscriptions
   context.subscriptions.push(
     showQuotaCommand,
@@ -426,6 +436,7 @@ export async function activate(context: vscode.ExtensionContext) {
     detectPortCommand,
     googleLoginCommand,
     googleLogoutCommand,
+    openDashboardCommand,
     configChangeDisposable,
     windowFocusDisposable,
     authStateDisposable,
@@ -468,20 +479,20 @@ async function initializeGoogleApiMethod(
     if (hasAntigravityDb()) {
       logger.info('Extension', 'Detected local Antigravity installation, checking for stored token...');
       const refreshToken = await extractRefreshTokenFromAntigravity();
-      
+
       if (refreshToken) {
         logger.info('Extension', 'Found local Antigravity token, prompting user...');
-        
+
         // 先设置为未登录状态并启动定时器，避免弹窗自动消失时状态栏卡住
         // 因为 VS Code 的 showInformationMessage 在弹窗自动消失时 Promise 可能不会立即 resolve
         statusBarService!.showNotLoggedIn();
         statusBarService!.show();
         startLocalTokenCheckTimer();
         logger.debug('Extension', 'Pre-set status to not logged in before showing prompt');
-        
+
         const useLocalToken = localizationService.t('notify.useLocalToken');
         const manualLogin = localizationService.t('notify.manualLogin');
-        
+
         // 使用非阻塞方式处理弹窗，不等待用户响应
         vscode.window.showInformationMessage(
           localizationService.t('notify.localTokenDetected'),
@@ -516,7 +527,7 @@ async function initializeGoogleApiMethod(
             // 弹窗被关闭或自动消失，状态已经是未登录，定时器已启动，无需额外操作
           }
         });
-        
+
         // 不等待弹窗响应，直接返回
         return;
       } else {
@@ -525,7 +536,7 @@ async function initializeGoogleApiMethod(
         );
       }
     }
-    
+
     // 无论是没有本地 token，还是用户关闭弹窗，都显示未登录状态
     statusBarService!.showNotLoggedIn();
     statusBarService!.show();
@@ -836,23 +847,23 @@ function handleConfigChange(config: Config): void {
         const authState = googleAuthService.getAuthState();
         if (authState.state === AuthState.NOT_AUTHENTICATED) {
           quotaService.stopPolling();
-          
+
           // 检查本地 Antigravity 是否有已存储的 token
           if (hasAntigravityDb()) {
             logger.info('ConfigChange', 'Detected local Antigravity installation, checking for stored token...');
             const refreshToken = await extractRefreshTokenFromAntigravity();
-            
+
             if (refreshToken) {
               logger.info('ConfigChange', 'Found local Antigravity token, prompting user...');
               const useLocalToken = localizationService.t('notify.useLocalToken');
               const manualLogin = localizationService.t('notify.manualLogin');
-              
+
               const selection = await vscode.window.showInformationMessage(
                 localizationService.t('notify.localTokenDetected'),
                 useLocalToken,
                 manualLogin
               );
-              
+
               if (selection === useLocalToken) {
                 statusBarService?.showLoggingIn();
                 const success = await googleAuthService.loginWithRefreshToken(refreshToken);
@@ -874,7 +885,7 @@ function handleConfigChange(config: Config): void {
               );
             }
           }
-          
+
           statusBarService?.showNotLoggedIn();
           statusBarService?.show();
           vscode.window.showInformationMessage(localizationService.t('notify.configUpdated'));

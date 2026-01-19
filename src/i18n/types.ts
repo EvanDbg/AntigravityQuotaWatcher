@@ -73,7 +73,12 @@ export type TranslationKey =
 
     // Dev tools
     | 'devTools.previewComplete'
-    | 'devTools.stop';
+    | 'devTools.stop'
+
+    // Dashboard
+    | 'dashboard.title'
+    | 'dashboard.comingSoon'
+    | 'dashboard.comingSoonHint';
 
 export interface TranslationMap {
     [key: string]: string;

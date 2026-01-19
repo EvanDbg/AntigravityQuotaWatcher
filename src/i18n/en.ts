@@ -75,5 +75,10 @@ export const en: TranslationMap = {
 
     // Dev tools
     'devTools.previewComplete': '✅ Notification preview complete',
-    'devTools.stop': 'Stop'
+    'devTools.stop': 'Stop',
+
+    // Dashboard
+    'dashboard.title': 'Antigravity Quota Watcher Dashboard',
+    'dashboard.comingSoon': 'More features coming soon...',
+    'dashboard.comingSoonHint': 'This panel will display Project ID, weekly limit detection, and more.'
 };

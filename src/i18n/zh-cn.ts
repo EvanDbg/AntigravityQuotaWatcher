@@ -75,5 +75,10 @@ export const zh_cn: TranslationMap = {
 
     // 开发工具
     'devTools.previewComplete': '✅ 通知预览完成',
-    'devTools.stop': '停止'
+    'devTools.stop': '停止',
+
+    // 仪表盘
+    'dashboard.title': 'Antigravity Quota Watcher 面板',
+    'dashboard.comingSoon': '更多功能即将推出...',
+    'dashboard.comingSoonHint': '此面板将显示 Project ID、周限检测等功能。'
 };

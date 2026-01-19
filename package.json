@@ -48,6 +48,10 @@
       {
         "command": "antigravity-quota-watcher.googleLogout",
         "title": "%command.googleLogout%"
+      },
+      {
+        "command": "antigravity-quota-watcher.openDashboard",
+        "title": "%command.openDashboard%"
       }
     ],
     "configuration": {

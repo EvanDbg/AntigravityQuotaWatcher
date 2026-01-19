@@ -4,6 +4,7 @@
     "command.detectPort": "Antigravity Quota Watcher: Re-detect Port",
     "command.googleLogin": "Antigravity Quota Watcher: Login with Google",
     "command.googleLogout": "Antigravity Quota Watcher: Logout from Google",
+    "command.openDashboard": "Antigravity Quota Watcher: Open Dashboard",
     "config.enabled": "Enable auto monitoring",
     "config.pollingInterval": "Polling interval (seconds)",
     "config.displayStyle": "Status bar display style",

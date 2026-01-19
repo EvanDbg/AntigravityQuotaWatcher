@@ -4,6 +4,7 @@
     "command.detectPort": "Antigravity Quota Watcher: 重新检测端口",
     "command.googleLogin": "Antigravity Quota Watcher: 使用 Google 账号登录",
     "command.googleLogout": "Antigravity Quota Watcher: 登出 Google 账号",
+    "command.openDashboard": "Antigravity Quota Watcher: 打开仪表盘",
     "config.enabled": "启用自动监控",
     "config.pollingInterval": "轮询间隔（秒）",
     "config.displayStyle": "状态栏显示样式",
