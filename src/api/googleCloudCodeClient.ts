@@ -135,13 +135,13 @@ export class GoogleCloudCodeClient {
         accessToken: string,
         projectId: string
     ): Promise<ModelsQuotaResponse> {
+        // projectId 可能为空 仅记录警告，继续尝试 API 调用
         if (!projectId) {
-            throw new Error('projectId is required for fetchModelsQuota');
+            logger.warn('GoogleAPI', 'fetchModelsQuota: projectId is empty, attempting API call without project');
         }
 
-        const body: any = {
-            project: projectId
-        };
+        // 如果 projectId 为空，不传 project 字段
+        const body: any = projectId ? { project: projectId } : {};
         logger.debug('GoogleAPI', 'fetchModelsQuota: Request body:', JSON.stringify(body));
 
         const response = await this.makeApiRequest(

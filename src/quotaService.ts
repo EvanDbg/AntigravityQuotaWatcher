@@ -595,7 +595,10 @@ export class QuotaService {
       // 获取项目信息
       logger.debug('QuotaService', 'Google API: Loading project info...');
       const projectInfo = await this.googleApiClient.loadProjectInfo(accessToken);
-      logger.info('QuotaService', `Google API: Project loaded, tier=${projectInfo.tier}, projectId=${projectInfo.projectId}`);
+      if (!projectInfo.projectId) {
+        logger.warn('QuotaService', `Google API: Project ID is empty (Individual tier user without Cloud Project)`);
+      }
+      logger.info('QuotaService', `Google API: Project loaded, tier=${projectInfo.tier}, projectId=${projectInfo.projectId || '(empty)'}`);
 
       // 获取模型配额
       logger.debug('QuotaService', 'Google API: Fetching models quota...');
