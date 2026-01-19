@@ -15,7 +15,7 @@ export const en: TranslationMap = {
 
     // Tooltip
     'tooltip.title': '**Antigravity Model Quota**', // Markdown bold
-    'tooltip.credits': '💳 **Prompt Credits**',
+    'tooltip.credits': '💳 Prompt Credits',
     'tooltip.available': 'Available',
     'tooltip.remaining': 'Remaining',
     'tooltip.depleted': '⚠️ **Depleted**',
@@ -80,5 +80,22 @@ export const en: TranslationMap = {
     // Dashboard
     'dashboard.title': 'Antigravity Quota Watcher Dashboard',
     'dashboard.comingSoon': 'More features coming soon...',
-    'dashboard.comingSoonHint': 'This panel will display Project ID, weekly limit detection, and more.'
+    'dashboard.comingSoonHint': 'This panel will display Project ID, weekly limit detection, and more.',
+    'dashboard.apiMode': 'API Mode & Account',
+    'dashboard.currentMethod': 'Current Quota Fetching Method',
+    'dashboard.account': 'Account',
+    'dashboard.plan': 'Plan',
+    'dashboard.localConnection': 'Local Connection',
+    'dashboard.pollingStatus': 'Polling Status',
+    'dashboard.interval': 'Interval',
+    'dashboard.lastUpdate': 'Last Update',
+    'dashboard.lastError': 'Last Error',
+    'dashboard.quickActions': 'Quick Actions',
+    'dashboard.refresh': 'Refresh Quota',
+    'dashboard.detectPort': 'Detect Port',
+    'dashboard.loginOAuth': 'OAuth Login',
+    'dashboard.loginLocalToken': 'Local Token Login',
+    'dashboard.logout': 'Logout',
+    'dashboard.settings': 'Edit Config',
+    'dashboard.quotaOverview': 'Quota Overview'
 };

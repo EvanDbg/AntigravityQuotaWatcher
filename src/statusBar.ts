@@ -21,6 +21,9 @@ export class StatusBarService {
   private refreshStartTime: number = 0;
   private readonly minRefreshDuration: number = 1000;
 
+  /** 缓存最后一次的配额快照 */
+  private lastSnapshot: QuotaSnapshot | undefined;
+
   constructor(
     warningThreshold: number = 50,
     criticalThreshold: number = 30,
@@ -59,6 +62,7 @@ export class StatusBarService {
     }
 
     // 保存最后的快照
+    this.lastSnapshot = snapshot;
 
     // 清除刷新状态
     this.isQuickRefreshing = false;
@@ -168,6 +172,11 @@ export class StatusBarService {
 
   setDisplayStyle(value: 'percentage' | 'progressBar' | 'dots'): void {
     this.displayStyle = value;
+  }
+
+  /** 获取缓存的最后一次配额快照 */
+  getLastSnapshot(): QuotaSnapshot | undefined {
+    return this.lastSnapshot;
   }
 
   private updateTooltip(snapshot: QuotaSnapshot): void {

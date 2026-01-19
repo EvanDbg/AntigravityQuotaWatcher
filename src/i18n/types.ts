@@ -78,7 +78,24 @@ export type TranslationKey =
     // Dashboard
     | 'dashboard.title'
     | 'dashboard.comingSoon'
-    | 'dashboard.comingSoonHint';
+    | 'dashboard.comingSoonHint'
+    | 'dashboard.apiMode'
+    | 'dashboard.currentMethod'
+    | 'dashboard.account'
+    | 'dashboard.plan'
+    | 'dashboard.localConnection'
+    | 'dashboard.pollingStatus'
+    | 'dashboard.interval'
+    | 'dashboard.lastUpdate'
+    | 'dashboard.lastError'
+    | 'dashboard.quickActions'
+    | 'dashboard.refresh'
+    | 'dashboard.detectPort'
+    | 'dashboard.loginOAuth'
+    | 'dashboard.loginLocalToken'
+    | 'dashboard.logout'
+    | 'dashboard.settings'
+    | 'dashboard.quotaOverview';
 
 export interface TranslationMap {
     [key: string]: string;

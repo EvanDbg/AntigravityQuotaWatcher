@@ -13,7 +13,7 @@ import { versionInfo } from './versionInfo';
 import { registerDevCommands } from './devTools';
 import { GoogleAuthService, AuthState, AuthStateInfo, extractRefreshTokenFromAntigravity, hasAntigravityDb, TokenSyncChecker } from './auth';
 import { logger } from './logger';
-import { WebviewPanelService } from './webviewPanel';
+import { WebviewPanelService, DashboardState } from './webviewPanel';
 
 const NON_AG_PROMPT_KEY = 'nonAgSwitchPromptDismissed';
 
@@ -30,6 +30,9 @@ const FOCUS_REFRESH_THROTTLE_MS = 3000;  // 焦点刷新节流阈值
 const AUTO_REDETECT_THROTTLE_MS = 30000; // 自动重探端口节流
 const LOCAL_TOKEN_CHECK_INTERVAL_MS = 30000; // 未登录状态下检查本地 token 的间隔
 let lastAutoRedetectTime: number = 0;
+
+// 缓存最后一次检测到的端口信息（用于 Dashboard 显示）
+let cachedPortInfo: { connectPort?: number; httpPort?: number; csrfToken?: string } = {};
 
 /**
  * Called when the extension is activated
@@ -266,6 +269,19 @@ export async function activate(context: vscode.ExtensionContext) {
           quotaService.setApiMethod(getApiMethodFromConfig(config.apiMethod));
           quotaService.startPolling(config.pollingInterval);
 
+          // 更新 Dashboard 端口信息
+          cachedPortInfo = {
+            connectPort: result.connectPort,
+            httpPort: result.httpPort,
+            csrfToken: result.csrfToken
+          };
+          updateDashboardState({
+            connectPort: result.connectPort,
+            httpPort: result.httpPort,
+            csrfToken: result.csrfToken,
+            lastError: undefined
+          });
+
           vscode.window.showInformationMessage(localizationService.t('notify.detectionSuccess', { port: result.port }));
         } else {
           logger.warn('Extension', 'detectPort command did not return valid ports');
@@ -356,6 +372,49 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Command: Login with Local Token (from Antigravity database)
+  const loginLocalTokenCommand = vscode.commands.registerCommand(
+    'antigravity-quota-watcher.loginLocalToken',
+    async () => {
+      logger.debug('Extension', 'loginLocalToken command invoked');
+      if (!googleAuthService) {
+        vscode.window.showErrorMessage(localizationService.t('login.error.serviceNotInitialized'));
+        return;
+      }
+
+      // 检查本地 Antigravity 是否有已存储的 token
+      if (!hasAntigravityDb()) {
+        vscode.window.showWarningMessage(localizationService.t('login.error.localTokenImport'));
+        return;
+      }
+
+      const refreshToken = await extractRefreshTokenFromAntigravity();
+      if (!refreshToken) {
+        vscode.window.showWarningMessage(localizationService.t('login.error.localTokenImport'));
+        return;
+      }
+
+      logger.info('Extension', 'Found local Antigravity token, attempting login...');
+      statusBarService?.showLoggingIn();
+      const success = await googleAuthService.loginWithRefreshToken(refreshToken);
+
+      if (success) {
+        vscode.window.showInformationMessage(localizationService.t('login.success.localToken'));
+        // 如果当前配置为 GOOGLE_API，刷新配额
+        config = configService!.getConfig();
+        if (config.apiMethod === 'GOOGLE_API' && quotaService) {
+          if (config.enabled) {
+            await quotaService.startPolling(config.pollingInterval);
+          }
+          await quotaService.quickRefresh();
+        }
+      } else {
+        statusBarService?.showNotLoggedIn();
+        vscode.window.showErrorMessage(localizationService.t('login.error.localToken', { error: 'Token invalid or expired' }));
+      }
+    }
+  );
+
   // Command: Google Logout
   const googleLogoutCommand = vscode.commands.registerCommand(
     'antigravity-quota-watcher.googleLogout',
@@ -375,6 +434,11 @@ export async function activate(context: vscode.ExtensionContext) {
         quotaService?.stopPolling();
         statusBarService?.clearStale();
         statusBarService?.showNotLoggedIn();
+        // 清除 Dashboard 的登录状态和配额数据
+        updateDashboardState({
+          isLoggedIn: false,
+          quotaSnapshot: undefined
+        });
       }
     }
   );
@@ -402,6 +466,11 @@ export async function activate(context: vscode.ExtensionContext) {
         statusBarService?.showNotLoggedIn();
         // 启动本地 token 检查定时器
         startLocalTokenCheckTimer();
+        // 清除 Dashboard 的登录状态和配额数据
+        updateDashboardState({
+          isLoggedIn: false,
+          quotaSnapshot: undefined
+        });
         break;
       case AuthState.TOKEN_EXPIRED:
         quotaService?.stopPolling();
@@ -424,7 +493,28 @@ export async function activate(context: vscode.ExtensionContext) {
     'antigravity-quota-watcher.openDashboard',
     () => {
       logger.debug('Extension', 'openDashboard command invoked');
-      WebviewPanelService.createOrShow(context.extensionUri);
+      const panel = WebviewPanelService.createOrShow(context.extensionUri);
+      
+      // 初始化 Dashboard 状态
+      const currentConfig = configService?.getConfig();
+      const currentApiMethod = getApiMethodFromConfig(currentConfig?.apiMethod || 'GET_USER_STATUS');
+      const authState = googleAuthService?.getAuthState();
+      
+      // 从 StatusBarService 获取缓存的快照
+      const cachedSnapshot = statusBarService?.getLastSnapshot();
+      
+      const initialState: DashboardState = {
+        apiMethod: currentApiMethod,
+        pollingInterval: currentConfig?.pollingInterval,
+        isLoggedIn: authState?.state === AuthState.AUTHENTICATED,
+        quotaSnapshot: cachedSnapshot,
+        // 端口信息从缓存获取
+        connectPort: cachedPortInfo.connectPort,
+        httpPort: cachedPortInfo.httpPort,
+        csrfToken: cachedPortInfo.csrfToken,
+      };
+      
+      panel.updateState(initialState);
     }
   );
 
@@ -435,6 +525,7 @@ export async function activate(context: vscode.ExtensionContext) {
     refreshQuotaCommand,
     detectPortCommand,
     googleLoginCommand,
+    loginLocalTokenCommand,
     googleLogoutCommand,
     openDashboardCommand,
     configChangeDisposable,
@@ -619,6 +710,20 @@ async function initializeLocalApiMethod(
     quotaService.setPorts(detectionResult?.connectPort ?? detectedPort, detectionResult?.httpPort);
     quotaService.setApiMethod(getApiMethodFromConfig(config.apiMethod));
 
+    // 更新 Dashboard 端口信息（如果面板已打开）
+    cachedPortInfo = {
+      connectPort: detectionResult?.connectPort ?? detectedPort,
+      httpPort: detectionResult?.httpPort,
+      csrfToken: detectedCsrfToken
+    };
+    updateDashboardState({
+      apiMethod: QuotaApiMethod.GET_USER_STATUS,
+      connectPort: cachedPortInfo.connectPort,
+      httpPort: cachedPortInfo.httpPort,
+      csrfToken: cachedPortInfo.csrfToken,
+      pollingInterval: config.pollingInterval
+    });
+
     // Register callbacks
     registerQuotaServiceCallbacks();
 
@@ -688,6 +793,15 @@ function stopLocalTokenCheckTimer(): void {
 }
 
 /**
+ * 更新 Dashboard 状态（如果面板已打开）
+ */
+function updateDashboardState(partialState: Partial<DashboardState>): void {
+  if (WebviewPanelService.currentPanel) {
+    WebviewPanelService.currentPanel.updateState(partialState);
+  }
+}
+
+/**
  * Register common callbacks for quota service
  */
 function registerQuotaServiceCallbacks(): void {
@@ -698,6 +812,9 @@ function registerQuotaServiceCallbacks(): void {
   // Register quota update callback
   quotaService.onQuotaUpdate((snapshot: QuotaSnapshot) => {
     statusBarService?.updateDisplay(snapshot);
+
+    // 更新 Dashboard
+    updateDashboardState({ quotaSnapshot: snapshot, lastError: undefined });
 
     // 对于 GOOGLE_API 方法，检查 Token 同步状态
     const apiMethod = quotaService?.getApiMethod();
@@ -714,6 +831,7 @@ function registerQuotaServiceCallbacks(): void {
           statusBarService?.clearStale();
           statusBarService?.showNotLoggedIn();
           startLocalTokenCheckTimer();
+          updateDashboardState({ isLoggedIn: false });
         },
         // onLocalTokenLogin: 本地 token 登录成功，停止检查定时器，开始轮询
         () => {
@@ -722,6 +840,7 @@ function registerQuotaServiceCallbacks(): void {
           if (config?.enabled) {
             quotaService?.startPolling(config.pollingInterval);
           }
+          updateDashboardState({ isLoggedIn: true });
         }
       );
     }
@@ -731,6 +850,9 @@ function registerQuotaServiceCallbacks(): void {
   quotaService.onError((error: Error) => {
     logger.error('Extension', 'Quota fetch failed:', error);
     statusBarService?.showError(`Connection failed: ${error.message}`);
+
+    // 更新 Dashboard 错误状态
+    updateDashboardState({ lastError: error.message });
 
     // 自动重探：本地 API 且疑似端口/CSRF 失效时，节流触发 detectPort
     const apiMethod = quotaService?.getApiMethod();
@@ -764,9 +886,11 @@ function registerQuotaServiceCallbacks(): void {
       }
       // 未登录或 token 过期时，启动本地 token 检查定时器
       startLocalTokenCheckTimer();
+      updateDashboardState({ isLoggedIn: false });
     } else {
       // 已登录，停止本地 token 检查定时器
       stopLocalTokenCheckTimer();
+      updateDashboardState({ isLoggedIn: true });
     }
   });
 
@@ -837,6 +961,12 @@ function handleConfigChange(config: Config): void {
       }
     }
 
+    // 更新 Dashboard 的 API 方法状态
+    updateDashboardState({
+      apiMethod: newApiMethod,
+      pollingInterval: config.pollingInterval
+    });
+
     // Handle API method change
     if (quotaService) {
       const currentApiMethod = quotaService.getApiMethod();
@@ -845,6 +975,11 @@ function handleConfigChange(config: Config): void {
       // 如果切换到 GOOGLE_API，检查认证状态
       if (newApiMethod === QuotaApiMethod.GOOGLE_API && googleAuthService) {
         const authState = googleAuthService.getAuthState();
+        // 更新 Dashboard 登录状态
+        updateDashboardState({
+          isLoggedIn: authState.state === AuthState.AUTHENTICATED
+        });
+        
         if (authState.state === AuthState.NOT_AUTHENTICATED) {
           quotaService.stopPolling();
 
@@ -920,6 +1055,19 @@ function handleConfigChange(config: Config): void {
             quotaService.setPorts(result.connectPort, result.httpPort);
             quotaService.setAuthInfo(undefined, result.csrfToken);
             statusBarService?.clearError();
+
+            // 更新 Dashboard 端口信息
+            cachedPortInfo = {
+              connectPort: result.connectPort,
+              httpPort: result.httpPort,
+              csrfToken: result.csrfToken
+            };
+            updateDashboardState({
+              connectPort: result.connectPort,
+              httpPort: result.httpPort,
+              csrfToken: result.csrfToken,
+              lastError: undefined
+            });
 
             if (config.enabled) {
               quotaService.startPolling(config.pollingInterval);

@@ -1,57 +1,60 @@
 /**
- * WebView Panel - Dashboard for additional features
- * 
- * This panel will provide:
- * - Project ID display
- * - Weekly limit detection
- * - And more features to be added...
+ * WebView Panel - Dashboard for quota monitoring and quick actions
  */
 
 import * as vscode from 'vscode';
 import { LocalizationService } from './i18n/localizationService';
 import { logger } from './logger';
+import { QuotaSnapshot } from './types';
+import { QuotaApiMethod } from './quotaService';
+
+/** Dashboard 状态数据 */
+export interface DashboardState {
+    apiMethod: QuotaApiMethod;
+    quotaSnapshot?: QuotaSnapshot;
+    // 本地 API 特有
+    connectPort?: number;
+    httpPort?: number;
+    csrfToken?: string;
+    // Google API 特有
+    projectId?: string;
+    // 通用
+    pollingInterval?: number;
+    isPolling?: boolean;
+    lastError?: string;
+    isLoggedIn?: boolean;
+}
 
 export class WebviewPanelService {
     public static currentPanel: WebviewPanelService | undefined;
     private readonly panel: vscode.WebviewPanel;
     private readonly extensionUri: vscode.Uri;
     private disposables: vscode.Disposable[] = [];
+    private state: DashboardState = { apiMethod: QuotaApiMethod.GET_USER_STATUS };
 
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
         this.panel = panel;
         this.extensionUri = extensionUri;
 
-        // Set the webview's initial html content
         this.updateContent();
 
-        // Listen for when the panel is disposed
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
-        // Handle messages from the webview
         this.panel.webview.onDidReceiveMessage(
-            (message) => {
-                this.handleMessage(message);
-            },
+            (message) => this.handleMessage(message),
             null,
             this.disposables
         );
     }
 
-    /**
-     * Create or show the webview panel
-     */
-    public static createOrShow(extensionUri: vscode.Uri): void {
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
+    public static createOrShow(extensionUri: vscode.Uri): WebviewPanelService {
+        const column = vscode.window.activeTextEditor?.viewColumn;
 
-        // If we already have a panel, show it
         if (WebviewPanelService.currentPanel) {
             WebviewPanelService.currentPanel.panel.reveal(column);
-            return;
+            return WebviewPanelService.currentPanel;
         }
 
-        // Otherwise, create a new panel
         const localizationService = LocalizationService.getInstance();
         const panel = vscode.window.createWebviewPanel(
             'antigravityDashboard',
@@ -66,36 +69,54 @@ export class WebviewPanelService {
 
         WebviewPanelService.currentPanel = new WebviewPanelService(panel, extensionUri);
         logger.info('WebviewPanel', 'Dashboard panel created');
+        return WebviewPanelService.currentPanel;
     }
 
-    /**
-     * Update the webview content
-     */
+    /** 更新 Dashboard 状态并刷新视图 */
+    public updateState(partialState: Partial<DashboardState>): void {
+        this.state = { ...this.state, ...partialState };
+        this.postMessage({ type: 'stateUpdate', state: this.state });
+    }
+
     private updateContent(): void {
         this.panel.webview.html = this.getHtmlContent();
     }
 
-    /**
-     * Handle messages from the webview
-     */
     private handleMessage(message: any): void {
         logger.debug('WebviewPanel', 'Received message:', message);
 
         switch (message.command) {
-            case 'refresh':
-                // TODO: Handle refresh command
+            case 'refreshQuota':
+                vscode.commands.executeCommand('antigravity-quota-watcher.quickRefreshQuota');
+                break;
+            case 'detectPort':
+                vscode.commands.executeCommand('antigravity-quota-watcher.detectPort');
+                break;
+            case 'login':
+                vscode.commands.executeCommand('antigravity-quota-watcher.googleLogin');
+                break;
+            case 'loginLocalToken':
+                vscode.commands.executeCommand('antigravity-quota-watcher.loginLocalToken');
+                break;
+            case 'logout':
+                vscode.commands.executeCommand('antigravity-quota-watcher.googleLogout');
+                break;
+            case 'openSettings':
+                vscode.commands.executeCommand('workbench.action.openSettings', 'antigravityQuotaWatcher');
+                break;
+            case 'ready':
+                // Webview 加载完成，发送当前状态
+                this.postMessage({ type: 'stateUpdate', state: this.state });
                 break;
             default:
                 logger.warn('WebviewPanel', 'Unknown message command:', message.command);
         }
     }
 
-    /**
-     * Generate the HTML content for the webview
-     */
     private getHtmlContent(): string {
         const localizationService = LocalizationService.getInstance();
         const nonce = this.getNonce();
+        const t = (key: string) => localizationService.t(key as any);
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -103,115 +124,326 @@ export class WebviewPanelService {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
-    <title>${localizationService.t('dashboard.title')}</title>
+    <title>${t('dashboard.title')}</title>
     <style>
         :root {
             --vscode-font-family: var(--vscode-editor-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
         }
-        
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: var(--vscode-font-family);
             padding: 20px;
             color: var(--vscode-foreground);
             background-color: var(--vscode-editor-background);
-            min-height: 100vh;
+            font-size: 13px;
         }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
+        .container { max-width: 700px; margin: 0 auto; }
         .header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 20px; padding-bottom: 12px;
             border-bottom: 1px solid var(--vscode-widget-border, #454545);
         }
-        
-        .header-icon {
-            font-size: 32px;
+        .header-title { font-size: 18px; font-weight: 600; }
+
+        .section {
+            background: var(--vscode-editor-inactiveSelectionBackground, rgba(255,255,255,0.04));
+            border: 1px solid var(--vscode-widget-border, #454545);
+            border-radius: 6px; padding: 14px; margin-bottom: 14px;
         }
-        
-        .header-title {
-            font-size: 24px;
-            font-weight: 600;
+        .section-title {
+            font-size: 13px; font-weight: 600; margin-bottom: 10px;
             color: var(--vscode-foreground);
+            display: flex; align-items: center; gap: 6px;
         }
-        
-        .placeholder {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-            text-align: center;
-            background-color: var(--vscode-editor-inactiveSelectionBackground, rgba(255,255,255,0.05));
-            border-radius: 8px;
-            border: 1px dashed var(--vscode-widget-border, #454545);
+        .info-row {
+            display: flex; justify-content: space-between; padding: 4px 0;
+            border-bottom: 1px solid var(--vscode-widget-border, rgba(255,255,255,0.1));
         }
-        
-        .placeholder-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.6;
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: var(--vscode-descriptionForeground); }
+        .info-value { font-family: monospace; color: var(--vscode-foreground); }
+        .info-value.masked { letter-spacing: 1px; }
+
+        .actions {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;
         }
-        
-        .placeholder-text {
-            font-size: 16px;
-            color: var(--vscode-descriptionForeground);
-            margin-bottom: 8px;
+        .btn {
+            padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer;
+            font-size: 12px; display: inline-flex; align-items: center; gap: 4px;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            transition: opacity 0.15s;
         }
-        
-        .placeholder-hint {
-            font-size: 13px;
-            color: var(--vscode-descriptionForeground);
-            opacity: 0.7;
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
         }
+
+        .badge {
+            display: inline-block; padding: 2px 6px; border-radius: 3px;
+            font-size: 11px; font-weight: 500;
+        }
+        .badge-google { background: #4285f4; color: #fff; }
+        .badge-local { background: #34a853; color: #fff; }
+        .badge-warning { background: var(--vscode-inputValidation-warningBackground, #5c4813); }
+        .badge-error { background: var(--vscode-inputValidation-errorBackground, #5a1d1d); }
+
+        .empty-state {
+            text-align: center; padding: 30px; color: var(--vscode-descriptionForeground);
+        }
+        .hidden { display: none !important; }
+
+        .quota-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .quota-table th, .quota-table td {
+            text-align: left; padding: 6px 8px;
+            border-bottom: 1px solid var(--vscode-widget-border, rgba(255,255,255,0.1));
+        }
+        .quota-table th { font-weight: 600; font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); }
+        .progress-bar {
+            width: 60px; height: 6px; background: #3a3a3a;
+            border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle;
+        }
+        .progress-fill { height: 100%; transition: width 0.3s; }
+        .progress-normal { background: #4caf50; }
+        .progress-warning { background: #ff9800; }
+        .progress-critical { background: #f44336; }
+        .progress-depleted { background: #1a1a1a; }
+        .progress-bar.depleted { background: #1a1a1a; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <span class="header-icon">📊</span>
-            <h1 class="header-title">${localizationService.t('dashboard.title')}</h1>
+            <h1 class="header-title">${t('dashboard.title')}</h1>
         </div>
-        
-        <div class="placeholder">
-            <span class="placeholder-icon">🚧</span>
-            <p class="placeholder-text">${localizationService.t('dashboard.comingSoon')}</p>
-            <p class="placeholder-hint">${localizationService.t('dashboard.comingSoonHint')}</p>
+
+        <!-- API 模式与账号信息 -->
+        <div class="section">
+            <div class="section-title">${t('dashboard.apiMode')}</div>
+            <div class="info-row">
+                <span class="info-label">${t('dashboard.currentMethod')}</span>
+                <span id="apiMethodBadge" class="badge badge-local">Local API</span>
+            </div>
+            <div id="accountRow" class="info-row">
+                <span class="info-label">${t('dashboard.account')}</span>
+                <span id="accountValue" class="info-value">-</span>
+            </div>
+            <div id="projectIdRow" class="info-row hidden">
+                <span class="info-label">Project ID</span>
+                <span id="projectIdValue" class="info-value">-</span>
+            </div>
+            <div id="planRow" class="info-row">
+                <span class="info-label">${t('dashboard.plan')}</span>
+                <span id="planValue" class="info-value">-</span>
+            </div>
+        </div>
+
+        <!-- 本地 API 连接信息 (仅本地模式显示) -->
+        <div id="localApiSection" class="section">
+            <div class="section-title">${t('dashboard.localConnection')}</div>
+            <div class="info-row">
+                <span class="info-label">Connect Port (HTTPS)</span>
+                <span id="connectPortValue" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">HTTP Port</span>
+                <span id="httpPortValue" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">CSRF Token</span>
+                <span id="csrfTokenValue" class="info-value masked">-</span>
+            </div>
+        </div>
+
+        <!-- 轮询状态 -->
+        <div class="section">
+            <div class="section-title">${t('dashboard.pollingStatus')}</div>
+            <div class="info-row">
+                <span class="info-label">${t('dashboard.interval')}</span>
+                <span id="pollingIntervalValue" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">${t('dashboard.lastUpdate')}</span>
+                <span id="lastUpdateValue" class="info-value">-</span>
+            </div>
+            <div id="errorRow" class="info-row hidden">
+                <span class="info-label">${t('dashboard.lastError')}</span>
+                <span id="errorValue" class="info-value badge-error">-</span>
+            </div>
+        </div>
+
+        <!-- 快捷操作 -->
+        <div class="section">
+            <div class="section-title">${t('dashboard.quickActions')}</div>
+            <div class="actions">
+                <button class="btn btn-secondary" id="btnRefresh">${t('dashboard.refresh')}</button>
+                <button class="btn btn-secondary" id="btnDetectPort">${t('dashboard.detectPort')}</button>
+                <button class="btn btn-secondary" id="btnLoginOAuth">${t('dashboard.loginOAuth')}</button>
+                <button class="btn btn-secondary" id="btnLoginLocalToken">${t('dashboard.loginLocalToken')}</button>
+                <button class="btn btn-secondary" id="btnLogout">${t('dashboard.logout')}</button>
+                <button class="btn btn-secondary" id="btnSettings">${t('dashboard.settings')}</button>
+            </div>
+        </div>
+
+        <!-- 配额概览 (有数据时显示) -->
+        <div id="quotaSection" class="section hidden">
+            <div class="section-title">${t('dashboard.quotaOverview')}</div>
+            <div id="promptCreditsRow" class="info-row hidden">
+                <span class="info-label">${t('tooltip.credits')}</span>
+                <span id="promptCreditsValue" class="info-value">-</span>
+            </div>
+            <table class="quota-table">
+                <thead>
+                    <tr>
+                        <th>${t('tooltip.model')}</th>
+                        <th>${t('tooltip.remaining')}</th>
+                        <th>${t('tooltip.resetTime')}</th>
+                    </tr>
+                </thead>
+                <tbody id="quotaTableBody"></tbody>
+            </table>
         </div>
     </div>
-    
+
     <script nonce="${nonce}">
         const vscode = acquireVsCodeApi();
-        
-        // Message handler for communication with extension
+
+        // DOM elements
+        const $ = id => document.getElementById(id);
+        const apiMethodBadge = $('apiMethodBadge');
+        const accountValue = $('accountValue');
+        const projectIdRow = $('projectIdRow');
+        const projectIdValue = $('projectIdValue');
+        const planValue = $('planValue');
+        const localApiSection = $('localApiSection');
+        const connectPortValue = $('connectPortValue');
+        const httpPortValue = $('httpPortValue');
+        const csrfTokenValue = $('csrfTokenValue');
+        const pollingIntervalValue = $('pollingIntervalValue');
+        const lastUpdateValue = $('lastUpdateValue');
+        const errorRow = $('errorRow');
+        const errorValue = $('errorValue');
+        const quotaSection = $('quotaSection');
+        const promptCreditsRow = $('promptCreditsRow');
+        const promptCreditsValue = $('promptCreditsValue');
+        const quotaTableBody = $('quotaTableBody');
+
+        // Buttons
+        $('btnRefresh').onclick = () => vscode.postMessage({ command: 'refreshQuota' });
+        $('btnDetectPort').onclick = () => vscode.postMessage({ command: 'detectPort' });
+        $('btnLoginOAuth').onclick = () => vscode.postMessage({ command: 'login' });
+        $('btnLoginLocalToken').onclick = () => vscode.postMessage({ command: 'loginLocalToken' });
+        $('btnLogout').onclick = () => vscode.postMessage({ command: 'logout' });
+        $('btnSettings').onclick = () => vscode.postMessage({ command: 'openSettings' });
+
+        function maskToken(token) {
+            if (!token || token.length <= 14) return '***';
+            return token.substring(0, 6) + '••••••' + token.substring(token.length - 4);
+        }
+
+        function formatTime(date) {
+            if (!date) return '-';
+            const d = new Date(date);
+            return d.toLocaleTimeString();
+        }
+
+        function getProgressClass(pct) {
+            // 按 README 规则: >=50% 绿色, 30-50% 黄色, <30% 红色, 0% 黑色
+            if (pct <= 0) return 'progress-depleted';
+            if (pct < 30) return 'progress-critical';
+            if (pct < 50) return 'progress-warning';
+            return 'progress-normal';
+        }
+
+        function updateUI(state) {
+            const isGoogleApi = state.apiMethod === 'GOOGLE_API';
+
+            // API 模式
+            apiMethodBadge.textContent = isGoogleApi ? 'Google API' : 'Local API';
+            apiMethodBadge.className = 'badge ' + (isGoogleApi ? 'badge-google' : 'badge-local');
+
+            // 本地 API 区块
+            localApiSection.classList.toggle('hidden', isGoogleApi);
+            $('btnDetectPort').classList.toggle('hidden', isGoogleApi);
+
+            // Google API 特有
+            projectIdRow.classList.toggle('hidden', !isGoogleApi || !state.projectId);
+            projectIdValue.textContent = state.projectId || '-';
+
+            // 登录/登出按钮状态 - 仅 Google API 模式显示
+            $('btnLoginOAuth').classList.toggle('hidden', !isGoogleApi || state.isLoggedIn);
+            $('btnLoginLocalToken').classList.toggle('hidden', !isGoogleApi || state.isLoggedIn);
+            $('btnLogout').classList.toggle('hidden', !isGoogleApi || !state.isLoggedIn);
+
+            // 账号/计划
+            const snapshot = state.quotaSnapshot;
+            accountValue.textContent = snapshot?.userEmail || '-';
+            planValue.textContent = snapshot?.planName || '-';
+
+            // 本地连接信息
+            connectPortValue.textContent = state.connectPort || '-';
+            httpPortValue.textContent = state.httpPort || '-';
+            csrfTokenValue.textContent = maskToken(state.csrfToken);
+
+            // 轮询状态
+            pollingIntervalValue.textContent = state.pollingInterval ? (state.pollingInterval / 1000) + 's' : '-';
+            lastUpdateValue.textContent = snapshot ? formatTime(snapshot.timestamp) : '-';
+
+            // 错误
+            if (state.lastError) {
+                errorRow.classList.remove('hidden');
+                errorValue.textContent = state.lastError;
+            } else {
+                errorRow.classList.add('hidden');
+            }
+
+            // 配额表格
+            if (snapshot && snapshot.models && snapshot.models.length > 0) {
+                quotaSection.classList.remove('hidden');
+
+                // Prompt Credits
+                if (snapshot.promptCredits) {
+                    promptCreditsRow.classList.remove('hidden');
+                    const pc = snapshot.promptCredits;
+                    promptCreditsValue.textContent = pc.available + ' / ' + pc.monthly + ' (' + pc.remainingPercentage.toFixed(1) + '%)';
+                } else {
+                    promptCreditsRow.classList.add('hidden');
+                }
+
+                // Models - 按名称排序保持稳定顺序
+                const sortedModels = [...snapshot.models].sort((a, b) => a.label.localeCompare(b.label));
+                quotaTableBody.innerHTML = sortedModels.map(m => {
+                    const pct = m.remainingPercentage ?? 0;
+                    const pctStr = pct.toFixed(1) + '%';
+                    const progressClass = getProgressClass(pct);
+                    const barClass = pct <= 0 ? 'progress-bar depleted' : 'progress-bar';
+                    return '<tr>' +
+                        '<td>' + m.label + '</td>' +
+                        '<td><div class="' + barClass + '"><div class="progress-fill ' + progressClass + '" style="width:' + pct + '%"></div></div> ' + pctStr + '</td>' +
+                        '<td>' + m.timeUntilResetFormatted + '</td>' +
+                        '</tr>';
+                }).join('');
+            } else {
+                quotaSection.classList.add('hidden');
+            }
+        }
+
         window.addEventListener('message', event => {
-            const message = event.data;
-            // Handle messages from extension
-            console.log('Received message from extension:', message);
+            const msg = event.data;
+            if (msg.type === 'stateUpdate') {
+                updateUI(msg.state);
+            }
         });
-        
-        // Example: Send a message to extension
-        // vscode.postMessage({ command: 'refresh' });
+
+        // 通知 extension 已准备好接收数据
+        vscode.postMessage({ command: 'ready' });
     </script>
 </body>
 </html>`;
     }
 
-    /**
-     * Generate a nonce for Content Security Policy
-     */
     private getNonce(): string {
         let text = '';
         const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -221,29 +453,17 @@ export class WebviewPanelService {
         return text;
     }
 
-    /**
-     * Send a message to the webview
-     */
     public postMessage(message: any): void {
         this.panel.webview.postMessage(message);
     }
 
-    /**
-     * Dispose the panel
-     */
     public dispose(): void {
         WebviewPanelService.currentPanel = undefined;
-
-        // Clean up resources
         this.panel.dispose();
-
         while (this.disposables.length) {
-            const disposable = this.disposables.pop();
-            if (disposable) {
-                disposable.dispose();
-            }
+            const d = this.disposables.pop();
+            if (d) d.dispose();
         }
-
         logger.info('WebviewPanel', 'Dashboard panel disposed');
     }
 }

@@ -15,7 +15,7 @@ export const zh_cn: TranslationMap = {
 
     // hover 提示框
     'tooltip.title': '**Antigravity 模型配额**',
-    'tooltip.credits': '💳 **提示词额度**',
+    'tooltip.credits': '💳 提示词额度',
     'tooltip.available': '可用',
     'tooltip.remaining': '剩余',
     'tooltip.depleted': '⚠️ **已耗尽**',
@@ -80,5 +80,22 @@ export const zh_cn: TranslationMap = {
     // 仪表盘
     'dashboard.title': 'Antigravity Quota Watcher 面板',
     'dashboard.comingSoon': '更多功能即将推出...',
-    'dashboard.comingSoonHint': '此面板将显示 Project ID、周限检测等功能。'
+    'dashboard.comingSoonHint': '此面板将显示 Project ID、周限检测等功能。',
+    'dashboard.apiMode': 'API 模式与账号',
+    'dashboard.currentMethod': '当前配额获取方式',
+    'dashboard.account': '账号',
+    'dashboard.plan': '计划',
+    'dashboard.localConnection': '本地连接',
+    'dashboard.pollingStatus': '轮询状态',
+    'dashboard.interval': '间隔',
+    'dashboard.lastUpdate': '最后更新',
+    'dashboard.lastError': '最近错误',
+    'dashboard.quickActions': '快捷操作',
+    'dashboard.refresh': '刷新配额',
+    'dashboard.detectPort': '检测端口',
+    'dashboard.loginOAuth': 'OAuth登录',
+    'dashboard.loginLocalToken': '本地Token登录',
+    'dashboard.logout': '登出',
+    'dashboard.settings': '修改配置',
+    'dashboard.quotaOverview': '配额概览'
 };
