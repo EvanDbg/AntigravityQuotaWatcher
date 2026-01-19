@@ -81,6 +81,58 @@ How to export logs:
 - **Auto Detection**: No manual configuration needed, automatically detects Antigravity service port and authentication information
 - **Local Login Sync**: Automatically detects Antigravity IDE login status and supports one-click import of local account credentials
 
+## Weekly Limit Detection
+
+In the Dashboard panel, you can check each model pool for weekly quota limits.
+
+> ⚠️ Weekly limit detection sends a test request, which consumes a small amount of quota.
+
+**Quota Pools:**
+- Gemini 3.x Pool
+- Claude / GPT Pool
+- Gemini 2.5 Pool
+
+**Detection Logic:**
+
+```
+                    Send test request (prompt: "Hi")
+                                │
+                                ▼
+                        HTTP Status Code?
+                                │
+            ┌───────────────────┼───────────────────┐
+            │                   │                   │
+            ▼                   ▼                   ▼
+           200                 429                Other
+            │                   │                   │
+            ▼                   ▼                   ▼
+        ✅ Quota           Parse error          ❓ Unknown
+            OK               .details              error
+                                │
+                                ▼
+                            reason?
+                                │
+            ┌───────────────────┼───────────────────┐
+            │                   │                   │
+            ▼                   ▼                   ▼
+      QUOTA_EXHAUSTED    RATE_LIMIT_       MODEL_CAPACITY_
+            │              EXCEEDED           EXHAUSTED
+            │                   │                   │
+            ▼                   ▼                   ▼
+        Reset time?        ⚠️ Too many        ⚠️ Server overloaded
+            │                requests           Try again later
+       ┌────┴────┐
+       │         │
+       ▼         ▼
+      >5h       ≤5h
+       │         │
+       ▼         ▼
+   ❌ Weekly  ⚠️ 5h rate
+      limit      limit
+```
+
+> Note: The 5-hour sliding window rate limit lasts at most 5 hours. If reset time exceeds 5 hours, it's definitely a weekly limit.
+
 ## Configuration Options
 
 For detailed configuration instructions, please see: **[📖 Configuration Documentation](./CONFIG.en.md)**

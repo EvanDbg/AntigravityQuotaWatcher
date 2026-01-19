@@ -546,7 +546,7 @@ export class WeeklyLimitChecker {
                             errorMessage: metadata.model || modelName
                         };
                     } else if (reason === 'QUOTA_EXHAUSTED') {
-                        const isWeekly = hoursUntilReset !== undefined && hoursUntilReset > 24;
+                        const isWeekly = hoursUntilReset !== undefined && hoursUntilReset > 5;
 
                         if (isWeekly) {
                             logger.info('WeeklyLimitChecker', `Model ${modelName}: WEEKLY LIMIT detected (${hoursUntilReset}h)`);
