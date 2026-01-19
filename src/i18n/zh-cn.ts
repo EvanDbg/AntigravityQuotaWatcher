@@ -104,8 +104,8 @@ export const zh_cn: TranslationMap = {
     // 周限检测
     'weeklyLimit.checking': '正在检测 {model} 的周限状态...',
     'weeklyLimit.ok': '✅ {pool} 池: 配额正常',
-    'weeklyLimit.rateLimited': '🟡 {pool} 池: 频率限制 (5h)，{hours}小时后重置',
-    'weeklyLimit.weeklyLimited': '🔴 {pool} 池: 已触发周限！{days}天{hours}小时后重置',
+    'weeklyLimit.rateLimited': '🟡 {pool} 池: 频率限制 (5h)，{hours}小时{minutes}分钟后重置',
+    'weeklyLimit.weeklyLimited': '🔴 {pool} 池: 已触发周限！{days}天{hours}小时{minutes}分钟后重置',
     'weeklyLimit.capacityExhausted': '⚠️ 模型 {model} 服务器过载，请稍后重试',
     'weeklyLimit.error': '❌ 检测失败: {error}',
     'weeklyLimit.notLoggedIn': '请先登录 Google 账号以检测周限'

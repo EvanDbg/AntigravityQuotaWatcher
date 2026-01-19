@@ -104,8 +104,8 @@ export const en: TranslationMap = {
     // Weekly Limit Check
     'weeklyLimit.checking': 'Checking weekly limit for {model}...',
     'weeklyLimit.ok': '✅ {pool} pool: Quota OK',
-    'weeklyLimit.rateLimited': '🟡 {pool} pool: Rate limited (5h), reset in {hours}h',
-    'weeklyLimit.weeklyLimited': '🔴 {pool} pool: Weekly limit reached! Reset in {days}d {hours}h',
+    'weeklyLimit.rateLimited': '🟡 {pool} pool: Rate limited (5h), reset in {hours}h {minutes}m',
+    'weeklyLimit.weeklyLimited': '🔴 {pool} pool: Weekly limit reached! Reset in {days}d {hours}h {minutes}m',
     'weeklyLimit.capacityExhausted': '⚠️ Model {model} server overloaded, please try again later',
     'weeklyLimit.error': '❌ Check failed: {error}',
     'weeklyLimit.notLoggedIn': 'Please login first to check weekly limit'

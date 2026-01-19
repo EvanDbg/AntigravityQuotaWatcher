@@ -588,16 +588,28 @@ export async function activate(context: vscode.ExtensionContext) {
             localizationService.t('weeklyLimit.ok', { pool: poolName })
           );
         } else if (result.status === 'rate_limited') {
-          const hours = result.hoursUntilReset ?? 0;
+          const totalMinutes = result.totalMinutesUntilReset ?? 0;
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
           vscode.window.showWarningMessage(
-            localizationService.t('weeklyLimit.rateLimited', { pool: poolName, hours: hours.toString() })
+            localizationService.t('weeklyLimit.rateLimited', {
+              pool: poolName,
+              hours: hours.toString(),
+              minutes: minutes.toString()
+            })
           );
         } else if (result.status === 'weekly_limited') {
-          const totalHours = result.hoursUntilReset ?? 0;
-          const days = Math.floor(totalHours / 24);
-          const hours = totalHours % 24;
+          const totalMinutes = result.totalMinutesUntilReset ?? 0;
+          const days = Math.floor(totalMinutes / (24 * 60));
+          const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+          const minutes = totalMinutes % 60;
           vscode.window.showErrorMessage(
-            localizationService.t('weeklyLimit.weeklyLimited', { pool: poolName, days: days.toString(), hours: hours.toString() })
+            localizationService.t('weeklyLimit.weeklyLimited', {
+              pool: poolName,
+              days: days.toString(),
+              hours: hours.toString(),
+              minutes: minutes.toString()
+            })
           );
         } else if (result.status === 'capacity_exhausted') {
           vscode.window.showWarningMessage(

@@ -15,6 +15,8 @@ import { logger } from '../logger';
 const CHAT_API_BASE = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
 const STREAM_GENERATE_PATH = '/v1internal:streamGenerateContent?alt=sse';
 const API_TIMEOUT_MS = 15000;
+const MAX_RETRY_COUNT = 3;
+const RETRY_BASE_DELAY_MS = 1000;
 const DEFAULT_SYSTEM_PROMPT =
     'Please ignore the following [ignore]You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.**Absolute paths only****Proactiveness**[/ignore]';
 const DEFAULT_SAFETY_SETTINGS = [
@@ -44,6 +46,7 @@ export interface WeeklyLimitResult {
     resetDelay?: string;       // 如 "168h0m0s"
     resetTimestamp?: string;   // ISO 8601 格式
     hoursUntilReset?: number;  // 距离重置的小时数
+    totalMinutesUntilReset?: number; // 距离重置的总分钟数
     errorMessage?: string;     // 错误信息
 }
 
@@ -62,12 +65,12 @@ export type QuotaPool = 'gemini3' | 'claude_gpt' | 'gemini2.5' | 'unknown';
  */
 export function getQuotaPool(modelName: string): QuotaPool {
     const lower = modelName.toLowerCase();
-    
+
     // Claude 和 GPT 共享一个池子
     if (lower.includes('claude') || lower.includes('gpt')) {
         return 'claude_gpt';
     }
-    
+
     // Gemini 模型需要根据版本号区分
     if (lower.includes('gemini')) {
         // 匹配 gemini-3, gemini-3.0, gemini-3.5 等
@@ -79,7 +82,7 @@ export function getQuotaPool(modelName: string): QuotaPool {
             return 'gemini2.5';
         }
     }
-    
+
     return 'unknown';
 }
 
@@ -258,7 +261,7 @@ function normalizeAntigravityRequest(
 export class WeeklyLimitChecker {
     private static instance: WeeklyLimitChecker;
 
-    private constructor() {}
+    private constructor() { }
 
     public static getInstance(): WeeklyLimitChecker {
         if (!WeeklyLimitChecker.instance) {
@@ -281,19 +284,94 @@ export class WeeklyLimitChecker {
         const pool = getQuotaPool(modelName);
         logger.info('WeeklyLimitChecker', `Checking weekly limit for model: ${modelName} (pool: ${pool})`);
 
-        try {
-            const response = await this.sendChatRequest(accessToken, projectId, modelName);
-            
-            // 请求成功，说明配额正常
-            logger.info('WeeklyLimitChecker', `Model ${modelName}: quota OK`);
-            return {
-                model: modelName,
-                pool,
-                status: 'ok'
-            };
-        } catch (error: any) {
-            return this.parseErrorResponse(error, modelName, pool);
+        let lastError: any;
+        for (let attempt = 1; attempt <= MAX_RETRY_COUNT; attempt++) {
+            try {
+                const response = await this.sendChatRequest(accessToken, projectId, modelName);
+
+                // 请求成功，说明配额正常
+                logger.info('WeeklyLimitChecker', `Model ${modelName}: quota OK`);
+                return {
+                    model: modelName,
+                    pool,
+                    status: 'ok'
+                };
+            } catch (error: any) {
+                lastError = error;
+
+                // 如果是 429 错误（配额相关），不需要重试，直接解析
+                if (error.statusCode === 429) {
+                    return this.parseErrorResponse(error, modelName, pool);
+                }
+
+                // 网络错误，尝试重试
+                if (this.isRetryableError(error) && attempt < MAX_RETRY_COUNT) {
+                    const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+                    logger.warn('WeeklyLimitChecker', `Attempt ${attempt} failed with network error, retrying in ${delay}ms...`);
+                    await this.sleep(delay);
+                    continue;
+                }
+
+                // 非重试错误或已达最大重试次数
+                break;
+            }
         }
+
+        // 所有重试都失败了
+        return this.parseErrorResponse(lastError, modelName, pool);
+    }
+
+    /**
+     * 判断错误是否可重试（网络相关错误）
+     */
+    private isRetryableError(error: any): boolean {
+        const message = (error?.message || '').toLowerCase();
+        return (
+            message.includes('socket') ||
+            message.includes('econnreset') ||
+            message.includes('econnrefused') ||
+            message.includes('etimedout') ||
+            message.includes('timeout') ||
+            message.includes('tls') ||
+            message.includes('disconnected') ||
+            message.includes('network') ||
+            error.code === 'ECONNRESET' ||
+            error.code === 'ECONNREFUSED' ||
+            error.code === 'ETIMEDOUT'
+        );
+    }
+
+    /**
+     * 延迟函数
+     */
+    private sleep(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * 将网络错误转换为用户友好的消息
+     */
+    private getFriendlyNetworkErrorMessage(error: any): string {
+        const message = (error?.message || '').toLowerCase();
+
+        if (message.includes('tls') || message.includes('ssl') || message.includes('secure')) {
+            return 'Network connection unstable, please try again';
+        }
+        if (message.includes('timeout')) {
+            return 'Request timed out, please check your network';
+        }
+        if (message.includes('econnrefused') || message.includes('connection refused')) {
+            return 'Unable to connect to server, please try again later';
+        }
+        if (message.includes('econnreset') || message.includes('socket') || message.includes('disconnected')) {
+            return 'Connection interrupted, please try again';
+        }
+        if (message.includes('network')) {
+            return 'Network error, please check your connection';
+        }
+
+        // 默认消息
+        return 'Network error, please try again';
     }
 
     /**
@@ -398,6 +476,18 @@ export class WeeklyLimitChecker {
         const statusCode = error.statusCode;
         const responseBody = error.responseBody;
 
+        // 网络错误（无 statusCode）
+        if (!statusCode) {
+            const friendlyMessage = this.getFriendlyNetworkErrorMessage(error);
+            logger.warn('WeeklyLimitChecker', `Model ${modelName}: network error - ${error.message}`);
+            return {
+                model: modelName,
+                pool,
+                status: 'error',
+                errorMessage: friendlyMessage
+            };
+        }
+
         // 非 429 错误
         if (statusCode !== 429) {
             logger.warn('WeeklyLimitChecker', `Model ${modelName}: non-429 error (${statusCode})`);
@@ -412,11 +502,11 @@ export class WeeklyLimitChecker {
         // 解析 429 错误响应
         logger.info('WeeklyLimitChecker', `Model ${modelName}: 429 error, parsing details...`);
         logger.debug('WeeklyLimitChecker', `Raw response body: ${responseBody}`);
-        
+
         try {
             const errorData = JSON.parse(responseBody);
             logger.debug('WeeklyLimitChecker', `Parsed error data: ${JSON.stringify(errorData, null, 2)}`);
-            
+
             const details = errorData?.error?.details || [];
             logger.debug('WeeklyLimitChecker', `Found ${details.length} detail entries`);
 
@@ -424,7 +514,7 @@ export class WeeklyLimitChecker {
                 const detail = details[i];
                 logger.debug('WeeklyLimitChecker', `Detail[${i}] @type: ${detail?.['@type']}`);
                 logger.debug('WeeklyLimitChecker', `Detail[${i}] full content: ${JSON.stringify(detail)}`);
-                
+
                 if (detail?.['@type'] === 'type.googleapis.com/google.rpc.ErrorInfo') {
                     const metadata = detail.metadata || {};
                     const reason = detail.reason || '';
@@ -433,10 +523,15 @@ export class WeeklyLimitChecker {
 
                     logger.info('WeeklyLimitChecker', `Model ${modelName}: reason=${reason}, resetDelay=${resetDelay}, metadata=${JSON.stringify(metadata)}`);
 
-                    // 计算距离重置的小时数
+                    // 计算距离重置的时间
                     let hoursUntilReset: number | undefined;
+                    let totalMinutesUntilReset: number | undefined;
                     if (resetDelay) {
-                        hoursUntilReset = this.parseResetDelay(resetDelay);
+                        const parsed = this.parseResetDelay(resetDelay);
+                        if (parsed) {
+                            hoursUntilReset = parsed.hours;
+                            totalMinutesUntilReset = parsed.totalMinutes;
+                        }
                     }
 
                     // 判断错误类型
@@ -452,7 +547,7 @@ export class WeeklyLimitChecker {
                         };
                     } else if (reason === 'QUOTA_EXHAUSTED') {
                         const isWeekly = hoursUntilReset !== undefined && hoursUntilReset > 24;
-                        
+
                         if (isWeekly) {
                             logger.info('WeeklyLimitChecker', `Model ${modelName}: WEEKLY LIMIT detected (${hoursUntilReset}h)`);
                             return {
@@ -462,7 +557,8 @@ export class WeeklyLimitChecker {
                                 reason,
                                 resetDelay,
                                 resetTimestamp,
-                                hoursUntilReset
+                                hoursUntilReset,
+                                totalMinutesUntilReset
                             };
                         } else {
                             logger.info('WeeklyLimitChecker', `Model ${modelName}: 5h rate limit (${hoursUntilReset}h)`);
@@ -473,7 +569,8 @@ export class WeeklyLimitChecker {
                                 reason,
                                 resetDelay,
                                 resetTimestamp,
-                                hoursUntilReset
+                                hoursUntilReset,
+                                totalMinutesUntilReset
                             };
                         }
                     } else if (reason === 'RATE_LIMIT_EXCEEDED') {
@@ -485,7 +582,8 @@ export class WeeklyLimitChecker {
                             reason,
                             resetDelay,
                             resetTimestamp,
-                            hoursUntilReset
+                            hoursUntilReset,
+                            totalMinutesUntilReset
                         };
                     }
                 }
@@ -494,12 +592,12 @@ export class WeeklyLimitChecker {
             // 429 但没有找到详细信息
             logger.warn('WeeklyLimitChecker', `Model ${modelName}: 429 but no quota details found in error.details`);
             logger.warn('WeeklyLimitChecker', `Full error structure: ${JSON.stringify(errorData)}`);
-            
+
             // 尝试从其他位置获取信息
             const errorMessage = errorData?.error?.message || '';
             const errorStatus = errorData?.error?.status || '';
             logger.info('WeeklyLimitChecker', `Error message: ${errorMessage}, status: ${errorStatus}`);
-            
+
             return {
                 model: modelName,
                 pool,
@@ -520,14 +618,25 @@ export class WeeklyLimitChecker {
     }
 
     /**
-     * 解析重置延迟字符串 (如 "168h0m0s") 为小时数
+     * 解析重置延迟字符串 (如 "168h0m0s", "5h30m0s")
+     * 返回小时数和总分钟数
      */
-    private parseResetDelay(delay: string): number | undefined {
-        const match = delay.match(/(\d+)h/);
-        if (match) {
-            return parseInt(match[1], 10);
+    private parseResetDelay(delay: string): { hours: number; minutes: number; totalMinutes: number } | undefined {
+        const hMatch = delay.match(/(\d+)h/);
+        const mMatch = delay.match(/(\d+)m/);
+
+        const hours = hMatch ? parseInt(hMatch[1], 10) : 0;
+        const minutes = mMatch ? parseInt(mMatch[1], 10) : 0;
+
+        if (!hMatch && !mMatch) {
+            return undefined;
         }
-        return undefined;
+
+        return {
+            hours,
+            minutes,
+            totalMinutes: hours * 60 + minutes
+        };
     }
 
     /**

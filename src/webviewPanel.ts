@@ -437,8 +437,10 @@ export class WebviewPanelService {
                 //     promptCreditsRow.classList.add('hidden');
                 // }
 
-                // Models - 按名称排序保持稳定顺序
-                const sortedModels = [...snapshot.models].sort((a, b) => a.label.localeCompare(b.label));
+                // Models - 按名称排序保持稳定顺序，过滤掉不需要显示的模型
+                const sortedModels = [...snapshot.models]
+                    .filter(m => !m.label.includes('Gemini 3 Pro Image'))
+                    .sort((a, b) => a.label.localeCompare(b.label));
                 quotaTableBody.innerHTML = sortedModels.map(m => {
                     const pct = m.remainingPercentage ?? 0;
                     const pctStr = pct.toFixed(1) + '%';
