@@ -10,15 +10,6 @@
 > **临时解决方案**：~~将代理节点设置为美国地区的节点~~,该方法目前似乎也已经失效，目前的配额递减规律是20%更新一次，100%->80%->60%...。
 
 > [!NOTE]
-> 本插件为非官方工具，与 Antigravity 没有任何关联。
-> 本插件部分依赖于 Antigravity 语言服务器的内部实现细节，相关机制可能会随时变动。
-
-> [!NOTE]
->  本插件从V0.9.0版本开始支持 VS Code fork IDE（WindSurf, Kiro, VS Code 等）。
-> 如需使用，请在配置中切换到**GOOGLE_API**方式获取模型配额，
-> 该方法不依赖于 Antigravity 本地环境，远程SSH项目也适合这种方法。
-
-> [!NOTE]
 > 号外号外！本仓库为vscode插件版，[桌面版](https://github.com/wusimpl/AntigravityQuotaWatcherDesktop)已发布，欢迎下载体验
 
 **一个在Antigravity状态栏实时显示AI模型配额剩余情况的插件。**
@@ -99,7 +90,7 @@
 - **账号信息**：显示当前登录账号和订阅计划
 - **快捷操作**：刷新配额、重新检测端口、登录/登出等
 
-![Dashboard](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/dashboard.jpg)
+<img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/dashboard.jpg" alt="Dashboard" width="500">
 
 <details>
 <summary><b>周限检测</b>（点击展开）</summary>
@@ -206,9 +197,16 @@
 
 ## 注意事项
 
+<details>
+<summary>点击展开</summary>
+
 - 首次启动会延迟 8 秒开始监控，避免频繁请求
 - 如果状态栏显示错误，可使用"重新检测端口"命令修复
 - **Windows 用户**：如果遇到端口检测错误，可以在设置中切换 `forcePowerShell` 选项。
+- 本插件为非官方工具，与 Antigravity 没有任何关联。本插件部分依赖于 Antigravity 语言服务器的内部实现细节，相关机制可能会随时变动。
+- 本插件从V0.9.0版本开始支持 VS Code fork IDE（WindSurf, Kiro, VS Code 等）。如需使用，请在配置中切换到**GOOGLE_API**方式获取模型配额，该方法不依赖于 Antigravity 本地环境，远程SSH项目也适合这种方法。
+
+</details>
 
 ## 致谢
  * Google API 配额获取方法来自 [Antigravity-Manager](https://github.com/lbjlaq/Antigravity-Manager) 项目，感谢作者的贡献！

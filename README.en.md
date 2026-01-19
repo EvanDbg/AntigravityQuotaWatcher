@@ -7,15 +7,6 @@
 >
 > **Temporary Solution**: Set your proxy node to a US-based server.
 
-> [!NOTE]
-> This plugin is an unofficial tool and has no affiliation with Antigravity.
-> This plugin relies on internal implementation details of the Antigravity language server, which may change at any time.
-
-> [!NOTE]
-> This plugin now supports VS Code fork IDEs (WindSurf, Kiro, VS Code, etc.) from V0.9.0.
-> To watch model quotas in fork IDEs, switch to the **GOOGLE_API** method in settings to get model quotas.
-> This method does not depend on the Antigravity local environment, making it also suitable for remote SSH projects.
-
 
 **A plugin that displays AI model quota status in real-time in the Antigravity status bar.**
 
@@ -96,7 +87,7 @@ Open the Dashboard panel via command palette `Antigravity: Open Dashboard`, whic
 - **Account Info**: Displays current logged-in account and subscription plan
 - **Quick Actions**: Refresh quota, re-detect port, login/logout, etc.
 
-![Dashboard](https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/dashboard.jpg)
+<img src="https://raw.githubusercontent.com/wusimpl/AntigravityQuotaWatcher/main/images/dashboard.jpg" alt="Dashboard" width="500">
 
 <details>
 <summary><b>Weekly Limit Detection</b> (click to expand)</summary>
@@ -204,9 +195,16 @@ Hover over the status bar to see remaining quota and next reset time for all mod
 
 ## Notes
 
+<details>
+<summary>Click to expand</summary>
+
 - First startup will delay 8 seconds before starting monitoring to avoid frequent requests
 - If the status bar shows an error, use the "Re-detect Port" command to fix it
 - **Windows Users**: If you encounter port detection errors, you can toggle the `forcePowerShell` option in settings.
+- This plugin is an unofficial tool and has no affiliation with Antigravity. This plugin relies on internal implementation details of the Antigravity language server, which may change at any time.
+- This plugin supports VS Code fork IDEs (WindSurf, Kiro, VS Code, etc.) from V0.9.0. To watch model quotas in fork IDEs, switch to the **GOOGLE_API** method in settings. This method does not depend on the Antigravity local environment, making it also suitable for remote SSH projects.
+
+</details>
 
 ## Acknowledgments
  * The Google API quota retrieval method comes from the [Antigravity-Manager](https://github.com/lbjlaq/Antigravity-Manager) project. Thanks to the author for the contribution!
