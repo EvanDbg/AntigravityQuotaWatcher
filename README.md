@@ -150,11 +150,20 @@
 
 
 ### 命令面板
+命令面板支持手动调用一些命令，这些命令用于排错和调用不常用的功能。
+按 `Ctrl+Shift+P`（Windows）或 `Cmd+Shift+P`（Mac）打开命令面板，支持以下命令：
 
-按 `Ctrl+Shift+P`（Windows）或 `Cmd+Shift+P`（Mac）打开命令面板，输入以下命令：
-
+**通用命令：**
+- **Antigravity Quota Watcher: Show Quota Details** - 显示配额详情
 - **Antigravity Quota Watcher: Refresh Quota** - 手动刷新配额数据
+- **Antigravity Quota Watcher: Open Dashboard** - 打开 Dashboard 面板
+
+**仅适用于 GET_USER_STATUS 方式的命令：**
 - **Antigravity Quota Watcher: Re-detect Port** - 重新检测 Antigravity 服务端口
+
+**仅适用于 GOOGLE_API 方式的命令：**
+- **Antigravity Quota Watcher: Login with Google** - 使用 Google 账号登录
+- **Antigravity Quota Watcher: Logout from Google** - 登出 Google 账号
 
 
 ## 状态栏说明

@@ -148,11 +148,20 @@ For detailed configuration instructions, please see: **[📖 Configuration Docum
 
 
 ### Command Palette
+The command palette allows you to manually invoke commands for troubleshooting and accessing less frequently used features.
+Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) to open the command palette. The following commands are available:
 
-Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) to open the command palette, and enter the following commands:
-
+**General Commands:**
+- **Antigravity Quota Watcher: Show Quota Details** - Show quota details
 - **Antigravity Quota Watcher: Refresh Quota** - Manually refresh quota data
+- **Antigravity Quota Watcher: Open Dashboard** - Open the Dashboard panel
+
+**Commands only for GET_USER_STATUS method:**
 - **Antigravity Quota Watcher: Re-detect Port** - Re-detect Antigravity service port
+
+**Commands only for GOOGLE_API method:**
+- **Antigravity Quota Watcher: Login with Google** - Login with Google account
+- **Antigravity Quota Watcher: Logout from Google** - Logout from Google account
 
 
 ## Status Bar Explanation
