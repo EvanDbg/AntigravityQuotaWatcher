@@ -80,7 +80,7 @@ How to export logs:
 
 ## Dashboard
 
-Open the Dashboard panel via command palette `Antigravity: Open Dashboard`, which provides:
+Open the Dashboard panel via command palette `Antigravity Quota Watcher: Open Dashboard`, which provides:
 
 - **Quota Overview**: Displays all model quotas and reset times in a table
 - **Connection Status**: Shows current API mode, port info, polling status, etc.
@@ -151,8 +151,8 @@ For detailed configuration instructions, please see: **[📖 Configuration Docum
 
 Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) to open the command palette, and enter the following commands:
 
-- **Antigravity: Refresh Quota** - Manually refresh quota data
-- **Antigravity: Re-detect Port** - Re-detect Antigravity service port
+- **Antigravity Quota Watcher: Refresh Quota** - Manually refresh quota data
+- **Antigravity Quota Watcher: Re-detect Port** - Re-detect Antigravity service port
 
 
 ## Status Bar Explanation

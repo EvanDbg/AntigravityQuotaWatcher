@@ -83,7 +83,7 @@
 
 ## Dashboard
 
-通过命令面板执行 `Antigravity: 打开 Dashboard` 可打开 Dashboard 面板，提供以下功能：
+通过命令面板执行 `Antigravity Quota Watcher: Open Dashboard` 可打开 Dashboard 面板，提供以下功能：
 
 - **配额概览**：以表格形式展示所有模型的剩余配额和重置时间
 - **连接状态**：显示当前 API 模式、端口信息、轮询状态等
@@ -153,8 +153,8 @@
 
 按 `Ctrl+Shift+P`（Windows）或 `Cmd+Shift+P`（Mac）打开命令面板，输入以下命令：
 
-- **Antigravity: 刷新配额** - 手动刷新配额数据
-- **Antigravity: 重新检测端口** - 重新检测 Antigravity 服务端口
+- **Antigravity Quota Watcher: Refresh Quota** - 手动刷新配额数据
+- **Antigravity Quota Watcher: Re-detect Port** - 重新检测 Antigravity 服务端口
 
 
 ## 状态栏说明
