@@ -140,8 +140,6 @@ In the Dashboard panel, you can check each model pool for weekly quota limits.
       limit      limit
 ```
 
-> Note: The 5-hour sliding window rate limit lasts at most 5 hours. If reset time exceeds 5 hours, it's definitely a weekly limit.
-
 </details>
 
 ## Configuration Options
