@@ -1,5 +1,4 @@
 {
-    "command.showQuota": "Antigravity Quota Watcher: Show Quota Details",
     "command.refreshQuota": "Antigravity Quota Watcher: Refresh Quota",
     "command.detectPort": "Antigravity Quota Watcher: Re-detect Port",
     "command.googleLogin": "Antigravity Quota Watcher: Login with Google",

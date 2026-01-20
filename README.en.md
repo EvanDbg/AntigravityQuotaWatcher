@@ -152,7 +152,6 @@ The command palette allows you to manually invoke commands for troubleshooting a
 Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) to open the command palette. The following commands are available:
 
 **General Commands:**
-- **Antigravity Quota Watcher: Show Quota Details** - Show quota details
 - **Antigravity Quota Watcher: Refresh Quota** - Manually refresh quota data
 - **Antigravity Quota Watcher: Open Dashboard** - Open the Dashboard panel
 

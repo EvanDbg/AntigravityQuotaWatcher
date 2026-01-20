@@ -18,10 +18,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "antigravity-quota-watcher.showQuota",
-        "title": "%command.showQuota%"
-      },
-      {
         "command": "antigravity-quota-watcher.refreshQuota",
         "title": "%command.refreshQuota%"
       },

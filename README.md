@@ -154,7 +154,6 @@
 按 `Ctrl+Shift+P`（Windows）或 `Cmd+Shift+P`（Mac）打开命令面板，支持以下命令：
 
 **通用命令：**
-- **Antigravity Quota Watcher: Show Quota Details** - 显示配额详情
 - **Antigravity Quota Watcher: Refresh Quota** - 手动刷新配额数据
 - **Antigravity Quota Watcher: Open Dashboard** - 打开 Dashboard 面板
 

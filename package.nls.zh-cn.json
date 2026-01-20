@@ -1,5 +1,4 @@
 {
-    "command.showQuota": "Antigravity Quota Watcher: 显示配额详情",
     "command.refreshQuota": "Antigravity Quota Watcher: 刷新配额",
     "command.detectPort": "Antigravity Quota Watcher: 重新检测端口",
     "command.googleLogin": "Antigravity Quota Watcher: 使用 Google 账号登录",

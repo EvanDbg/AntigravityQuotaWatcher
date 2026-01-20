@@ -107,14 +107,6 @@ export async function activate(context: vscode.ExtensionContext) {
     await initializeLocalApiMethod(context, config, localizationService);
   }
 
-  // Command: show quota details (placeholder)
-  const showQuotaCommand = vscode.commands.registerCommand(
-    'antigravity-quota-watcher.showQuota',
-    () => {
-      // TODO: implement quota detail panel
-    }
-  );
-
   // Command: quick refresh quota (for success state)
   const quickRefreshQuotaCommand = vscode.commands.registerCommand(
     'antigravity-quota-watcher.quickRefreshQuota',
@@ -631,7 +623,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Add to context subscriptions
   context.subscriptions.push(
-    showQuotaCommand,
     quickRefreshQuotaCommand,
     refreshQuotaCommand,
     detectPortCommand,
