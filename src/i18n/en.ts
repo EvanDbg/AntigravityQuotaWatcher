@@ -86,6 +86,9 @@ export const en: TranslationMap = {
     'dashboard.account': 'Account',
     'dashboard.plan': 'Plan',
     'dashboard.localConnection': 'Local Connection',
+    'dashboard.googleConnection': 'Google Connection',
+    'dashboard.loginStatus': 'Login Status',
+    'dashboard.dataSource': 'Data Source',
     'dashboard.pollingStatus': 'Polling Status',
     'dashboard.interval': 'Interval',
     'dashboard.lastUpdate': 'Last Update',
@@ -101,6 +104,7 @@ export const en: TranslationMap = {
     'dashboard.quotaOverview': 'Quota Overview',
     'dashboard.weeklyLimit': 'Weekly Limit',
     'dashboard.weeklyLimitWarning': 'Weekly limit check consumes a small amount of quota. Please do not use frequently.',
+    'dashboard.starBannerText': 'If you find this project helpful, please give it a star!',
 
     // Weekly Limit Check
     'weeklyLimit.checking': 'Checking weekly limit for {model}...',

@@ -153,6 +153,18 @@ export class WebviewPanelService {
         }
         .header-title { font-size: 18px; font-weight: 600; }
 
+        .section-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .section-row > .section {
+            min-width: 0; margin-bottom: 0 !important;
+        }
+        .section-row > .section.hidden {
+            display: none !important;
+        }
         .section {
             background: var(--vscode-editor-inactiveSelectionBackground, rgba(255,255,255,0.04));
             border: 1px solid var(--vscode-widget-border, #454545);
@@ -259,6 +271,27 @@ export class WebviewPanelService {
             border: 5px solid transparent;
             border-top-color: var(--vscode-widget-border, #454545);
         }
+
+        .star-banner {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.1) 100%);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 6px; padding: 14px; margin-top: 14px;
+            text-align: center;
+        }
+        .star-banner-content {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; flex-wrap: wrap;
+        }
+        .star-icon { font-size: 18px; }
+        .star-text { color: var(--vscode-foreground); font-size: 13px; }
+        .star-link {
+            color: #ffd700; text-decoration: none; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 10px; border-radius: 4px;
+            background: rgba(255, 215, 0, 0.15);
+            transition: background 0.2s;
+        }
+        .star-link:hover { background: rgba(255, 215, 0, 0.25); }
     </style>
 </head>
 <body>
@@ -267,41 +300,57 @@ export class WebviewPanelService {
             <h1 class="header-title">${t('dashboard.title')}</h1>
         </div>
 
-        <!-- API 模式与账号信息 -->
-        <div class="section">
-            <div class="section-title">${t('dashboard.apiMode')}</div>
-            <div class="info-row">
-                <span class="info-label">${t('dashboard.currentMethod')}</span>
-                <span id="apiMethodBadge" class="badge badge-local">Local API</span>
+        <!-- 第1、2卡片并排布局 -->
+        <div class="section-row">
+            <!-- API 模式与账号信息 -->
+            <div class="section">
+                <div class="section-title">${t('dashboard.apiMode')}</div>
+                <div class="info-row">
+                    <span class="info-label">${t('dashboard.currentMethod')}</span>
+                    <span id="apiMethodBadge" class="badge badge-local">Local API</span>
+                </div>
+                <div id="accountRow" class="info-row">
+                    <span class="info-label">${t('dashboard.account')}</span>
+                    <span id="accountValue" class="info-value">-</span>
+                </div>
+                <div id="projectIdRow" class="info-row hidden">
+                    <span class="info-label">Project ID</span>
+                    <span id="projectIdValue" class="info-value">-</span>
+                </div>
+                <div id="planRow" class="info-row">
+                    <span class="info-label">${t('dashboard.plan')}</span>
+                    <span id="planValue" class="info-value">-</span>
+                </div>
             </div>
-            <div id="accountRow" class="info-row">
-                <span class="info-label">${t('dashboard.account')}</span>
-                <span id="accountValue" class="info-value">-</span>
-            </div>
-            <div id="projectIdRow" class="info-row hidden">
-                <span class="info-label">Project ID</span>
-                <span id="projectIdValue" class="info-value">-</span>
-            </div>
-            <div id="planRow" class="info-row">
-                <span class="info-label">${t('dashboard.plan')}</span>
-                <span id="planValue" class="info-value">-</span>
-            </div>
-        </div>
 
-        <!-- 本地 API 连接信息 (仅本地模式显示) -->
-        <div id="localApiSection" class="section">
-            <div class="section-title">${t('dashboard.localConnection')}</div>
-            <div class="info-row">
-                <span class="info-label">Connect Port (HTTPS)</span>
-                <span id="connectPortValue" class="info-value">-</span>
+            <!-- 本地 API 连接信息 (仅本地模式显示) -->
+            <div id="localApiSection" class="section">
+                <div class="section-title">${t('dashboard.localConnection')}</div>
+                <div class="info-row">
+                    <span class="info-label">Connect Port (HTTPS)</span>
+                    <span id="connectPortValue" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">HTTP Port</span>
+                    <span id="httpPortValue" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">CSRF Token</span>
+                    <span id="csrfTokenValue" class="info-value masked">-</span>
+                </div>
             </div>
-            <div class="info-row">
-                <span class="info-label">HTTP Port</span>
-                <span id="httpPortValue" class="info-value">-</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">CSRF Token</span>
-                <span id="csrfTokenValue" class="info-value masked">-</span>
+
+            <!-- Google API 连接信息 (仅 Google 模式显示) -->
+            <div id="googleApiSection" class="section hidden">
+                <div class="section-title">${t('dashboard.googleConnection')}</div>
+                <div class="info-row">
+                    <span class="info-label">${t('dashboard.loginStatus')}</span>
+                    <span id="googleLoginStatus" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">${t('dashboard.dataSource')}</span>
+                    <span id="googleDataSource" class="info-value">Google Cloud API</span>
+                </div>
             </div>
         </div>
 
@@ -357,6 +406,17 @@ export class WebviewPanelService {
                 <tbody id="quotaTableBody"></tbody>
             </table>
         </div>
+
+        <!-- Star 横幅 -->
+        <div class="star-banner">
+            <div class="star-banner-content">
+                <span class="star-icon">⭐</span>
+                <span class="star-text">${t('dashboard.starBannerText')}</span>
+                <a class="star-link" href="https://github.com/wusimpl/AntigravityQuotaWatcher" target="_blank">
+                    GitHub ⭐
+                </a>
+            </div>
+        </div>
     </div>
 
     <script nonce="${nonce}">
@@ -370,9 +430,12 @@ export class WebviewPanelService {
         const projectIdValue = $('projectIdValue');
         const planValue = $('planValue');
         const localApiSection = $('localApiSection');
+        const googleApiSection = $('googleApiSection');
         const connectPortValue = $('connectPortValue');
         const httpPortValue = $('httpPortValue');
         const csrfTokenValue = $('csrfTokenValue');
+        const googleLoginStatus = $('googleLoginStatus');
+        const googleDataSource = $('googleDataSource');
         const pollingIntervalValue = $('pollingIntervalValue');
         const lastUpdateValue = $('lastUpdateValue');
         const errorRow = $('errorRow');
@@ -413,14 +476,21 @@ export class WebviewPanelService {
 
         function updateUI(state) {
             const isGoogleApi = state.apiMethod === 'GOOGLE_API';
+            const snapshot = state.quotaSnapshot;
 
             // API 模式
             apiMethodBadge.textContent = isGoogleApi ? 'Google API' : 'Local API';
             apiMethodBadge.className = 'badge ' + (isGoogleApi ? 'badge-google' : 'badge-local');
 
-            // 本地 API 区块
+            // 本地 API 模块
             localApiSection.classList.toggle('hidden', isGoogleApi);
+            googleApiSection.classList.toggle('hidden', !isGoogleApi);
             $('btnDetectPort').classList.toggle('hidden', isGoogleApi);
+
+            // Google API 连接信息
+            if (isGoogleApi) {
+                googleLoginStatus.textContent = state.isLoggedIn ? '已登录' : '未登录';
+            }
 
             // Google API 特有
             projectIdRow.classList.toggle('hidden', !isGoogleApi || !state.projectId);
@@ -435,7 +505,6 @@ export class WebviewPanelService {
             $('btnLogout').classList.toggle('hidden', !isGoogleApi || !state.isLoggedIn);
 
             // 账号/计划
-            const snapshot = state.quotaSnapshot;
             accountValue.textContent = snapshot?.userEmail || '-';
             planValue.textContent = snapshot?.planName || '-';
 

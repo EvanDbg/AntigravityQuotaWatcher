@@ -84,6 +84,9 @@ export type TranslationKey =
     | 'dashboard.account'
     | 'dashboard.plan'
     | 'dashboard.localConnection'
+    | 'dashboard.googleConnection'
+    | 'dashboard.loginStatus'
+    | 'dashboard.dataSource'
     | 'dashboard.pollingStatus'
     | 'dashboard.interval'
     | 'dashboard.lastUpdate'
@@ -99,6 +102,7 @@ export type TranslationKey =
     | 'dashboard.quotaOverview'
     | 'dashboard.weeklyLimit'
     | 'dashboard.weeklyLimitWarning'
+    | 'dashboard.starBannerText'
 
     // Weekly Limit Check
     | 'weeklyLimit.checking'

@@ -315,7 +315,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     // GOOGLE_API 模式无需焦点刷新，避免多余请求
     if (getApiMethodFromConfig(currentConfig.apiMethod) === QuotaApiMethod.GOOGLE_API) {
-      logger.debug('FocusRefresh', 'GOOGLE_API mode, skip focus-triggered refresh');
       return;
     }
 

@@ -282,15 +282,13 @@ export class WeeklyLimitChecker {
         modelName: string
     ): Promise<WeeklyLimitResult> {
         const pool = getQuotaPool(modelName);
-        logger.info('WeeklyLimitChecker', `Checking weekly limit for model: ${modelName} (pool: ${pool})`);
 
         let lastError: any;
         for (let attempt = 1; attempt <= MAX_RETRY_COUNT; attempt++) {
             try {
-                await this.sendChatRequest(accessToken, projectId, modelName);
+                const result = await this.sendChatRequest(accessToken, projectId, modelName);
 
-                // 请求成功，说明配额正常
-                logger.info('WeeklyLimitChecker', `Model ${modelName}: quota OK`);
+                // 请求成功，说明配额正常（日志已在 sendChatRequest 中打印）
                 return {
                     model: modelName,
                     pool,
@@ -420,9 +418,7 @@ export class WeeklyLimitChecker {
                 }
             };
 
-            logger.info('WeeklyLimitChecker', `Sending chat request to model: ${modelName} (normalized: ${normalized.model})`);
-            logger.debug('WeeklyLimitChecker', `Request URL: ${url.hostname}${STREAM_GENERATE_PATH}`);
-            logger.debug('WeeklyLimitChecker', `Request payload: ${postData}`);
+            logger.info('WeeklyLimitChecker', `Checking ${modelName} -> ${normalized.model}`);
 
             const req = https.request(options, (res) => {
                 let data = '';
@@ -432,16 +428,14 @@ export class WeeklyLimitChecker {
                 });
 
                 res.on('end', () => {
-                    logger.info('WeeklyLimitChecker', `Response status: ${res.statusCode}`);
-                    logger.debug('WeeklyLimitChecker', `Response headers: ${JSON.stringify(res.headers)}`);
-                    logger.debug('WeeklyLimitChecker', `Response body (first 1000 chars): ${data.substring(0, 1000)}`);
-
                     if (res.statusCode === 200) {
-                        logger.info('WeeklyLimitChecker', `Model ${modelName}: Request succeeded, quota is OK`);
+                        // 成功，解析模型回复作为配额正常的证据
+                        const replyText = this.extractReplyText(data);
+                        logger.info('WeeklyLimitChecker', `${modelName}: ✓ quota OK, reply: "${replyText}"`);
                         resolve({ success: true, data });
                     } else {
-                        logger.warn('WeeklyLimitChecker', `Model ${modelName}: Got HTTP ${res.statusCode}`);
-                        // 将错误信息传递给 reject
+                        // 失败，记录响应体用于解析
+                        logger.debug('WeeklyLimitChecker', `HTTP ${res.statusCode}, body: ${data.substring(0, 500)}`);
                         const error = new Error(`HTTP ${res.statusCode}`);
                         (error as any).statusCode = res.statusCode;
                         (error as any).responseBody = data;
@@ -479,7 +473,7 @@ export class WeeklyLimitChecker {
         // 网络错误（无 statusCode）
         if (!statusCode) {
             const friendlyMessage = this.getFriendlyNetworkErrorMessage(error);
-            logger.warn('WeeklyLimitChecker', `Model ${modelName}: network error - ${error.message}`);
+            logger.warn('WeeklyLimitChecker', `${modelName}: network error - ${error.message}`);
             return {
                 model: modelName,
                 pool,
@@ -490,7 +484,7 @@ export class WeeklyLimitChecker {
 
         // 非 429 错误
         if (statusCode !== 429) {
-            logger.warn('WeeklyLimitChecker', `Model ${modelName}: non-429 error (${statusCode})`);
+            logger.warn('WeeklyLimitChecker', `${modelName}: HTTP ${statusCode}`);
             return {
                 model: modelName,
                 pool,
@@ -500,28 +494,16 @@ export class WeeklyLimitChecker {
         }
 
         // 解析 429 错误响应
-        logger.info('WeeklyLimitChecker', `Model ${modelName}: 429 error, parsing details...`);
-        logger.debug('WeeklyLimitChecker', `Raw response body: ${responseBody}`);
-
         try {
             const errorData = JSON.parse(responseBody);
-            logger.debug('WeeklyLimitChecker', `Parsed error data: ${JSON.stringify(errorData, null, 2)}`);
-
             const details = errorData?.error?.details || [];
-            logger.debug('WeeklyLimitChecker', `Found ${details.length} detail entries`);
 
-            for (let i = 0; i < details.length; i++) {
-                const detail = details[i];
-                logger.debug('WeeklyLimitChecker', `Detail[${i}] @type: ${detail?.['@type']}`);
-                logger.debug('WeeklyLimitChecker', `Detail[${i}] full content: ${JSON.stringify(detail)}`);
-
+            for (const detail of details) {
                 if (detail?.['@type'] === 'type.googleapis.com/google.rpc.ErrorInfo') {
                     const metadata = detail.metadata || {};
                     const reason = detail.reason || '';
                     const resetDelay = metadata.quotaResetDelay || '';
                     const resetTimestamp = metadata.quotaResetTimeStamp || '';
-
-                    logger.info('WeeklyLimitChecker', `Model ${modelName}: reason=${reason}, resetDelay=${resetDelay}, metadata=${JSON.stringify(metadata)}`);
 
                     // 计算距离重置的时间
                     let hoursUntilReset: number | undefined;
@@ -536,8 +518,7 @@ export class WeeklyLimitChecker {
 
                     // 判断错误类型
                     if (reason === 'MODEL_CAPACITY_EXHAUSTED') {
-                        // 服务器容量不足，不是配额问题
-                        logger.info('WeeklyLimitChecker', `Model ${modelName}: SERVER CAPACITY EXHAUSTED`);
+                        logger.info('WeeklyLimitChecker', `${modelName}: ⚠ capacity exhausted`);
                         return {
                             model: modelName,
                             pool,
@@ -549,7 +530,7 @@ export class WeeklyLimitChecker {
                         const isWeekly = hoursUntilReset !== undefined && hoursUntilReset > 5;
 
                         if (isWeekly) {
-                            logger.info('WeeklyLimitChecker', `Model ${modelName}: WEEKLY LIMIT detected (${hoursUntilReset}h)`);
+                            logger.info('WeeklyLimitChecker', `${modelName}: ✗ weekly limit (${hoursUntilReset}h until reset)`);
                             return {
                                 model: modelName,
                                 pool,
@@ -561,7 +542,7 @@ export class WeeklyLimitChecker {
                                 totalMinutesUntilReset
                             };
                         } else {
-                            logger.info('WeeklyLimitChecker', `Model ${modelName}: 5h rate limit (${hoursUntilReset}h)`);
+                            logger.info('WeeklyLimitChecker', `${modelName}: ⏱ rate limit (${hoursUntilReset}h)`);
                             return {
                                 model: modelName,
                                 pool,
@@ -574,7 +555,7 @@ export class WeeklyLimitChecker {
                             };
                         }
                     } else if (reason === 'RATE_LIMIT_EXCEEDED') {
-                        logger.info('WeeklyLimitChecker', `Model ${modelName}: rate limit exceeded`);
+                        logger.info('WeeklyLimitChecker', `${modelName}: ⏱ rate limit exceeded`);
                         return {
                             model: modelName,
                             pool,
@@ -590,14 +571,8 @@ export class WeeklyLimitChecker {
             }
 
             // 429 但没有找到详细信息
-            logger.warn('WeeklyLimitChecker', `Model ${modelName}: 429 but no quota details found in error.details`);
-            logger.warn('WeeklyLimitChecker', `Full error structure: ${JSON.stringify(errorData)}`);
-
-            // 尝试从其他位置获取信息
+            logger.warn('WeeklyLimitChecker', `${modelName}: 429 but no details, raw: ${responseBody.substring(0, 200)}`);
             const errorMessage = errorData?.error?.message || '';
-            const errorStatus = errorData?.error?.status || '';
-            logger.info('WeeklyLimitChecker', `Error message: ${errorMessage}, status: ${errorStatus}`);
-
             return {
                 model: modelName,
                 pool,
@@ -606,8 +581,7 @@ export class WeeklyLimitChecker {
             };
 
         } catch (parseError) {
-            logger.error('WeeklyLimitChecker', `Failed to parse 429 response as JSON: ${parseError}`);
-            logger.error('WeeklyLimitChecker', `Raw response (first 500 chars): ${responseBody?.substring(0, 500)}`);
+            logger.error('WeeklyLimitChecker', `${modelName}: failed to parse 429 response`);
             return {
                 model: modelName,
                 pool,
@@ -637,6 +611,36 @@ export class WeeklyLimitChecker {
             minutes,
             totalMinutes: hours * 60 + minutes
         };
+    }
+
+    /**
+     * 从 SSE 响应中提取模型回复的文字
+     */
+    private extractReplyText(sseData: string): string {
+        const textParts: string[] = [];
+        
+        // SSE 格式: data: {...}\ndata: {...}\n
+        const lines = sseData.split('\n');
+        for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            
+            try {
+                const json = JSON.parse(line.substring(6));
+                const parts = json?.response?.candidates?.[0]?.content?.parts || [];
+                for (const part of parts) {
+                    // 只取非 thought 的文字
+                    if (part.text && !part.thought) {
+                        textParts.push(part.text);
+                    }
+                }
+            } catch {
+                // 忽略解析失败的行
+            }
+        }
+        
+        const fullText = textParts.join('').trim();
+        // 截取前 100 字符，避免日志太长
+        return fullText.length > 100 ? fullText.substring(0, 100) + '...' : fullText;
     }
 
     /**

@@ -86,6 +86,9 @@ export const zh_cn: TranslationMap = {
     'dashboard.account': '账号',
     'dashboard.plan': '计划',
     'dashboard.localConnection': '本地连接',
+    'dashboard.googleConnection': 'Google 连接',
+    'dashboard.loginStatus': '登录状态',
+    'dashboard.dataSource': '数据来源',
     'dashboard.pollingStatus': '轮询状态',
     'dashboard.interval': '间隔',
     'dashboard.lastUpdate': '最后更新',
@@ -101,6 +104,7 @@ export const zh_cn: TranslationMap = {
     'dashboard.quotaOverview': '配额概览',
     'dashboard.weeklyLimit': '周限检测',
     'dashboard.weeklyLimitWarning': '周限检测功能需要消耗少量额度，请勿频繁使用',
+    'dashboard.starBannerText': '如果觉得本项目有帮助，请给个 Star 支持一下！',
 
     // 周限检测
     'weeklyLimit.checking': '正在检测 {model} 的周限状态...',
