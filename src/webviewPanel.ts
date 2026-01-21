@@ -7,6 +7,7 @@ import { LocalizationService } from './i18n/localizationService';
 import { logger } from './logger';
 import { QuotaSnapshot } from './types';
 import { QuotaApiMethod } from './quotaService';
+import { ProxyService } from './proxyService';
 
 /** Dashboard 状态数据 */
 export interface DashboardState {
@@ -116,9 +117,36 @@ export class WebviewPanelService {
                 // Webview 加载完成，发送当前状态
                 this.postMessage({ type: 'stateUpdate', state: this.state });
                 break;
+            case 'testProxy':
+                // 测试代理连接
+                this.handleTestProxy();
+                break;
+            case 'detectSystemProxy':
+                // 检测系统代理
+                this.handleDetectSystemProxy();
+                break;
             default:
                 logger.warn('WebviewPanel', 'Unknown message command:', message.command);
         }
+    }
+
+    private async handleTestProxy(): Promise<void> {
+        const proxyService = ProxyService.getInstance();
+        const result = await proxyService.testProxyConnection();
+        this.postMessage({
+            type: 'proxyTestResult',
+            success: result.success,
+            message: result.message
+        });
+    }
+
+    private handleDetectSystemProxy(): void {
+        const proxyService = ProxyService.getInstance();
+        const detectedUrl = proxyService.detectSystemProxy();
+        this.postMessage({
+            type: 'systemProxyDetected',
+            url: detectedUrl || null
+        });
     }
 
     private getHtmlContent(): string {

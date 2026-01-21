@@ -1,5 +1,6 @@
 import * as https from 'https';
 import { logger } from '../logger';
+import { ProxyService } from '../proxyService';
 
 const ANTIGRAVITY_API_BASE = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
 const LOAD_CODE_ASSIST_PATH = '/v1internal:loadCodeAssist';
@@ -16,7 +17,7 @@ export interface AntigravityProjectInfo {
 export class AntigravityClient {
     private static instance: AntigravityClient;
 
-    private constructor() {}
+    private constructor() { }
 
     public static getInstance(): AntigravityClient {
         if (!AntigravityClient.instance) {
@@ -148,12 +149,16 @@ export class AntigravityClient {
             const url = new URL(ANTIGRAVITY_API_BASE);
             const postData = JSON.stringify(body);
 
+            // 获取代理 Agent（如果配置了代理）
+            const proxyAgent = ProxyService.getInstance().getAgentForHost(url.hostname);
+
             const options: https.RequestOptions = {
                 hostname: url.hostname,
                 port: 443,
                 path: path,
                 method: 'POST',
                 timeout: API_TIMEOUT_MS,
+                agent: proxyAgent,  // 添加代理 agent 支持
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(postData),

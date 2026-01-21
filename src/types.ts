@@ -79,6 +79,15 @@ export enum QuotaLevel {
 
 export type ApiMethodPreference = /* 'COMMAND_MODEL_CONFIG' | */ 'GET_USER_STATUS' | 'GOOGLE_API';
 
+/**
+ * 代理配置
+ */
+export interface ProxyConfig {
+  enabled: boolean;      // 代理开关
+  autoDetect: boolean;   // 自动检测系统代理
+  url: string;           // 代理 URL (手动填写或自动检测)
+}
+
 export interface Config {
   enabled: boolean;
   pollingInterval: number;
@@ -92,4 +101,5 @@ export interface Config {
   displayStyle: 'percentage' | 'progressBar' | 'dots';
   language: 'auto' | 'en' | 'zh-cn';
   logLevel: 'ERROR' | 'WARNING' | 'INFO' | 'DEBUG';
+  proxy: ProxyConfig;  // 代理配置
 }

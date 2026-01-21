@@ -13,6 +13,7 @@ import {
     RETRY_DELAY_MS,
 } from '../auth/constants';
 import { logger } from '../logger';
+import { ProxyService } from '../proxyService';
 
 /**
  * 项目信息 (loadCodeAssist 响应)
@@ -299,12 +300,19 @@ export class GoogleCloudCodeClient {
             logger.debug('GoogleAPI', `doRequest: Body length: ${postData.length} bytes`);
             logger.debug('GoogleAPI', `doRequest: Token: ${this.maskToken(accessToken)}`);
 
+            // 获取代理 Agent（如果配置了代理）
+            const proxyAgent = ProxyService.getInstance().getAgentForHost(url.hostname);
+            if (proxyAgent) {
+                logger.debug('GoogleAPI', 'doRequest: Using proxy agent');
+            }
+
             const options: https.RequestOptions = {
                 hostname: url.hostname,
                 port: 443,
                 path: path,
                 method: 'POST',
                 timeout: API_TIMEOUT_MS,
+                agent: proxyAgent,  // 添加代理 agent 支持
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(postData),

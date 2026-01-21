@@ -199,6 +199,30 @@ Hover over the status bar to see remaining quota and next reset time for all mod
 
 </details>
 
+## Proxy Settings
+
+<details>
+<summary>Click to expand</summary>
+
+Suitable for users who have not enabled TUN mode and use tools like Proxifier to proxy antigravity.
+First, it should be clarified that antigravity has built-in proxy support, which can be controlled via the `http.proxySupport` setting:
+
+| Value | Description |
+|-------|-------------|
+| `override`| **Automatically use operating system proxy settings**. If you have already set up a system proxy in your proxy software, antigravity will automatically detect and use it without additional configuration. |
+| `on`| Use the proxy manually configured in `http.proxy` |
+| `fallback`| Try direct connection first, then use proxy if it fails |
+| `off`| Do not use proxy at all |
+
+**The plugin will automatically inherit antigravity's proxy settings**. If your antigravity is already able to access the network through a proxy normally, this plugin will also automatically use the same proxy without additional configuration.
+
+In special cases, if you need to configure a proxy specifically for this plugin, you can use the plugin's independent proxy configuration feature:
+**Use environment variable proxy**: Enable `proxyEnabled` and `proxyAutoDetect`, the plugin will automatically read `HTTPS_PROXY` or `HTTP_PROXY` environment variables.
+OR
+**Manually specify proxy**: Enable `proxyEnabled`, then fill in `proxyUrl`.
+
+</details>
+
 ## Notes
 
 - First startup will delay 8 seconds before starting monitoring to avoid frequent requests

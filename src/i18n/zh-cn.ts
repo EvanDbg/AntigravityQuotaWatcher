@@ -109,5 +109,22 @@ export const zh_cn: TranslationMap = {
     'weeklyLimit.weeklyLimited': '🔴 {pool} 池: 已触发周限！{days}天{hours}小时{minutes}分钟后重置',
     'weeklyLimit.capacityExhausted': '⚠️ 模型 {model} 服务器过载，请稍后重试',
     'weeklyLimit.error': '❌ 检测失败: {error}',
-    'weeklyLimit.notLoggedIn': '请先登录 Google 账号以检测周限'
+    'weeklyLimit.notLoggedIn': '请先登录 Google 账号以检测周限',
+
+    // 代理设置
+    'proxy.title': '代理设置',
+    'proxy.enabled': '启用代理',
+    'proxy.autoDetect': '自动检测系统代理',
+    'proxy.url': '代理 URL',
+    'proxy.urlPlaceholder': '例如: http://127.0.0.1:7890',
+    'proxy.testConnection': '测试连接',
+    'proxy.testing': '测试中...',
+    'proxy.testSuccess': '代理连接成功',
+    'proxy.testFailed': '代理连接失败',
+    'proxy.detectedUrl': '检测到系统代理',
+    'proxy.noSystemProxy': '未检测到系统代理',
+    'proxy.save': '保存',
+    'proxy.currentStatus': '当前状态',
+    'proxy.statusEnabled': '已启用',
+    'proxy.statusDisabled': '已禁用'
 };

@@ -109,5 +109,22 @@ export const en: TranslationMap = {
     'weeklyLimit.weeklyLimited': '🔴 {pool} pool: Weekly limit reached! Reset in {days}d {hours}h {minutes}m',
     'weeklyLimit.capacityExhausted': '⚠️ Model {model} server overloaded, please try again later',
     'weeklyLimit.error': '❌ Check failed: {error}',
-    'weeklyLimit.notLoggedIn': 'Please login first to check weekly limit'
+    'weeklyLimit.notLoggedIn': 'Please login first to check weekly limit',
+
+    // Proxy Settings
+    'proxy.title': 'Proxy Settings',
+    'proxy.enabled': 'Enable Proxy',
+    'proxy.autoDetect': 'Auto-detect System Proxy',
+    'proxy.url': 'Proxy URL',
+    'proxy.urlPlaceholder': 'e.g., http://127.0.0.1:7890',
+    'proxy.testConnection': 'Test Connection',
+    'proxy.testing': 'Testing...',
+    'proxy.testSuccess': 'Proxy connection successful',
+    'proxy.testFailed': 'Proxy connection failed',
+    'proxy.detectedUrl': 'System proxy detected',
+    'proxy.noSystemProxy': 'No system proxy detected',
+    'proxy.save': 'Save',
+    'proxy.currentStatus': 'Current Status',
+    'proxy.statusEnabled': 'Enabled',
+    'proxy.statusDisabled': 'Disabled'
 };

@@ -25,7 +25,12 @@ export class ConfigService {
       showGeminiFlash: config.get<boolean>('showGeminiFlash', true),
       displayStyle: (config.get<string>('displayStyle', 'progressBar') as Config['displayStyle']),
       language: (config.get<string>('language', 'auto') as Config['language']),
-      logLevel: (config.get<string>('logLevel', 'DEBUG') as Config['logLevel'])
+      logLevel: (config.get<string>('logLevel', 'DEBUG') as Config['logLevel']),
+      proxy: {
+        enabled: config.get<boolean>('proxyEnabled', false),
+        autoDetect: config.get<boolean>('proxyAutoDetect', true),
+        url: config.get<string>('proxyUrl', '')
+      }
     };
   }
 

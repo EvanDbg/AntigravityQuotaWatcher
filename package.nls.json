@@ -19,5 +19,8 @@
     "config.showPromptCredits": "Show Prompt Credits (not officially enabled yet)",
     "config.forcePowerShell": "Use PowerShell mode for process detection [Windows only, requires extension restart]",
     "config.language": "Language / 语言",
-    "config.logLevel": "Log level for debugging"
+    "config.logLevel": "Log level for debugging",
+    "config.proxyEnabled": "Enable proxy for network requests",
+    "config.proxyAutoDetect": "Auto-detect system proxy (HTTPS_PROXY, HTTP_PROXY environment variables)",
+    "config.proxyUrl": "Proxy URL (e.g., http://127.0.0.1:7890). Leave empty to use auto-detected proxy"
 }
