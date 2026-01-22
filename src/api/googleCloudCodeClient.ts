@@ -180,8 +180,8 @@ export class GoogleCloudCodeClient {
 
             const info = modelInfo as any;
             if (info.quotaInfo) {
-                // [DEBUG] 打印完整的模型信息，用于分析 weekly limit 字段
-                logger.info('GoogleAPI', `[QUOTA_DEBUG] Model "${modelName}" FULL info: ${JSON.stringify(info)}`);
+                // [DEBUG] 打印关键的模型配额信息
+                logger.info('GoogleAPI', `[QUOTA_DEBUG] Model "${modelName}": remaining=${info.quotaInfo.remainingFraction}, resetTime=${info.quotaInfo.resetTime}, maxTokens=${info.maxTokens || 'N/A'}`);
                 const parsed = this.parseModelQuota(modelName, info);
                 logger.debug('GoogleAPI', `fetchModelsQuota: Model "${modelName}" -> remaining: ${parsed.remainingQuota * 100}%`);
                 models.push(parsed);

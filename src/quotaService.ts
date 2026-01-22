@@ -119,6 +119,8 @@ export class QuotaService {
   private isFirstAttempt: boolean = true;
   private consecutiveErrors: number = 0;
   private retryCount: number = 0;
+  // 记录是否至少成功获取过一次配额，用于首次失败时直显错误
+  private hasSuccessfulFetch: boolean = false;
   private isRetrying: boolean = false;
   private isPollingTransition: boolean = false;  // 轮询状态切换锁，防止竞态条件
   private csrfToken?: string;
@@ -388,6 +390,9 @@ export class QuotaService {
       const hasPromptCredits = Boolean(snapshot.promptCredits);
       logger.info('QuotaService', `Quota fetched successfully: models=${modelCount}, hasPromptCredits=${hasPromptCredits}, planName=${snapshot.planName || 'N/A'}`);
 
+      // 标记成功获取过数据，后续可区分“首次失败”场景
+      this.hasSuccessfulFetch = true;
+
       if (this.updateCallback) {
         this.updateCallback(snapshot);
       } else {
@@ -420,6 +425,10 @@ export class QuotaService {
         const isNetworkError = this.isNetworkOrTimeoutError(error);
         if (isNetworkError) {
           logger.warn('QuotaService', 'Google API: Network/timeout error, marking data as stale');
+          // 首次请求即失败时，直接抛给错误回调以触发状态栏红色错误态
+          if (!this.hasSuccessfulFetch && this.errorCallback) {
+            this.errorCallback(error as Error);
+          }
           if (this.staleCallback) {
             this.staleCallback(true);
           }

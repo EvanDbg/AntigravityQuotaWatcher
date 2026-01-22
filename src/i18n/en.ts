@@ -11,7 +11,7 @@ export const en: TranslationMap = {
     'status.notLoggedIn': '$(account) Not logged in, click to login',
     'status.loggingIn': '$(sync~spin) Logging in...',
     'status.loginExpired': '$(warning) Login expired, click to re-login',
-    'status.stale': '⏸️',
+    'status.stale': '$(circle-slash)',
 
     // Tooltip
     'tooltip.title': '**Antigravity Model Quota**', // Markdown bold
@@ -26,7 +26,7 @@ export const en: TranslationMap = {
     'tooltip.clickToRetry': 'Click to retry',
     'tooltip.clickToLogin': 'Click to login with Google',
     'tooltip.clickToRelogin': 'Login expired, click to re-login',
-    'tooltip.staleWarning': '⚠️ Data may be outdated (network issue or timeout)',
+    'tooltip.staleWarning': '⚠️ Quota Data is outdated (network issue or Request imeout)',
 
     // Notifications (vscode.window.show*Message)
     'notify.unableToDetectProcess': 'Antigravity Quota Watcher: Unable to detect the Antigravity process.',

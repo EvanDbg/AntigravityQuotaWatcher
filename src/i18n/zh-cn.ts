@@ -11,7 +11,7 @@ export const zh_cn: TranslationMap = {
     'status.notLoggedIn': '$(account) 未登录，点击登录',
     'status.loggingIn': '$(sync~spin) 登录中...',
     'status.loginExpired': '$(warning) 登录已过期，点击重新登录',
-    'status.stale': '⏸️',
+    'status.stale': '$(circle-slash)',
 
     // hover 提示框
     'tooltip.title': '**Antigravity 模型配额**',
@@ -26,7 +26,7 @@ export const zh_cn: TranslationMap = {
     'tooltip.clickToRetry': '点击重试',
     'tooltip.clickToLogin': '点击登录 Google 账号',
     'tooltip.clickToRelogin': '登录已过期，点击重新登录',
-    'tooltip.staleWarning': '⚠️ 数据可能已过时（网络问题或超时）',
+    'tooltip.staleWarning': '⚠️ 数据已过时（网络问题或请求超时）',
 
     // 通知弹窗 (vscode.window.show*Message)
     'notify.unableToDetectProcess': 'Antigravity Quota Watcher: 无法检测到 Antigravity 进程。',

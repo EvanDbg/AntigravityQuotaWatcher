@@ -28,13 +28,32 @@ images/**
 # 调试文件
 **/*.map
 
-# 依赖（只保留 sql.js 必需文件）
+# 依赖（只保留必需文件）
 node_modules/**
+
+# sql.js (wasm 文件)
 !node_modules/sql.js/
 !node_modules/sql.js/dist/
 !node_modules/sql.js/dist/sql-wasm.js
 !node_modules/sql.js/dist/sql-wasm.wasm
 !node_modules/sql.js/package.json
+
+# https-proxy-agent 及其依赖链
+!node_modules/https-proxy-agent/
+!node_modules/https-proxy-agent/dist/**
+!node_modules/https-proxy-agent/package.json
+
+!node_modules/agent-base/
+!node_modules/agent-base/dist/**
+!node_modules/agent-base/package.json
+
+!node_modules/debug/
+!node_modules/debug/src/**
+!node_modules/debug/package.json
+
+!node_modules/ms/
+!node_modules/ms/index.js
+!node_modules/ms/package.json
 
 # 构建脚本
 build.ps1

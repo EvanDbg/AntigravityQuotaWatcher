@@ -16,6 +16,8 @@ export class StatusBarService {
   private showGeminiFlash: boolean;
   private displayStyle: 'percentage' | 'progressBar' | 'dots';
   private localizationService: LocalizationService;
+  /** 标记当前 tooltip 是否已添加过时警告，避免重复 prepend */
+  private hasStaleWarning: boolean = false;
 
   private isQuickRefreshing: boolean = false;
   private refreshStartTime: number = 0;
@@ -183,6 +185,8 @@ export class StatusBarService {
     const md = new vscode.MarkdownString();
     md.isTrusted = true;
     md.supportHtml = true;
+    // 新构建 tooltip 时，重置过时提示标记
+    this.hasStaleWarning = false;
 
     const titleSuffix = snapshot.planName ? ` (${snapshot.planName})` : '';
     md.appendMarkdown(`${this.localizationService.t('tooltip.title')}${titleSuffix}\n\n`);
@@ -444,9 +448,24 @@ export class StatusBarService {
 
   /**
    * 显示数据过时标志 (网络问题或超时)
-   * 在当前状态栏文本前添加过时图标
+   * 先恢复到上次的配额显示，再在前面添加过时图标
    */
   showStale(): void {
+    // 如果正在刷新中，先恢复到上次的配额显示
+    if (this.isQuickRefreshing && this.lastSnapshot) {
+      // 清除刷新状态
+      this.isQuickRefreshing = false;
+      this.refreshStartTime = 0;
+      // 恢复配额显示（不触发 updateDisplay 以避免递归）
+      this.rebuildDisplayFromSnapshot(this.lastSnapshot);
+    }
+
+    // 若从未成功获取过配额，直接显示错误态，避免卡在“获取中”
+    if (!this.lastSnapshot) {
+      this.showError(this.localizationService.t('tooltip.error'));
+      return;
+    }
+
     const currentText = this.statusBarItem.text;
     const staleIcon = this.localizationService.t('status.stale');
     // 避免重复添加
@@ -456,6 +475,10 @@ export class StatusBarService {
     // 更新 tooltip 添加过时警告
     const currentTooltip = this.statusBarItem.tooltip;
     if (currentTooltip instanceof vscode.MarkdownString) {
+      if (this.hasStaleWarning) {
+        this.statusBarItem.show();
+        return; // 已添加过时警告，不再重复
+      }
       const staleWarning = this.localizationService.t('tooltip.staleWarning');
       // 在开头添加警告
       const newMd = new vscode.MarkdownString();
@@ -464,8 +487,68 @@ export class StatusBarService {
       newMd.appendMarkdown(`${staleWarning}\n\n`);
       newMd.appendMarkdown(currentTooltip.value);
       this.statusBarItem.tooltip = newMd;
+      this.hasStaleWarning = true;
     }
     this.statusBarItem.show();
+  }
+
+  /**
+   * 从快照重建状态栏显示（内部方法，不更新 lastSnapshot）
+   */
+  private rebuildDisplayFromSnapshot(snapshot: QuotaSnapshot): void {
+    this.statusBarItem.command = 'antigravity-quota-watcher.quickRefreshQuota';
+
+    const parts: string[] = [];
+
+    if (this.showPlanName && snapshot.planName) {
+      const planNameFormatted = this.formatPlanName(snapshot.planName);
+      parts.push(`Plan: ${planNameFormatted}`);
+    }
+
+    if (this.showPromptCredits && snapshot.promptCredits) {
+      const { available, monthly, remainingPercentage } = snapshot.promptCredits;
+      const indicator = this.getStatusIndicator(remainingPercentage);
+      const creditsPart = `${indicator} 💳 ${available}/${this.formatNumber(monthly)} (${remainingPercentage.toFixed(0)}%)`;
+      parts.push(creditsPart);
+    }
+
+    const modelsToShow = this.selectModelsToDisplay(snapshot.models);
+
+    for (const model of modelsToShow) {
+      const emoji = this.getModelEmoji(model.label);
+      const shortName = this.getShortModelName(model.label);
+      const indicator = this.getStatusIndicator(model.remainingPercentage ?? 0);
+
+      if (model.isExhausted) {
+        if (this.displayStyle === 'percentage') {
+          parts.push(`${indicator} ${emoji} ${shortName}: 0%`);
+        } else if (this.displayStyle === 'dots') {
+          parts.push(`${indicator} ${emoji} ${shortName} ${this.getDotsBar(0)}`);
+        } else {
+          parts.push(`${indicator} ${emoji} ${shortName} ${this.getProgressBar(0)}`);
+        }
+      } else if (model.remainingPercentage !== undefined) {
+        if (this.displayStyle === 'percentage') {
+          parts.push(`${indicator} ${emoji} ${shortName}: ${model.remainingPercentage.toFixed(0)}%`);
+        } else if (this.displayStyle === 'dots') {
+          parts.push(`${indicator} ${emoji} ${shortName} ${this.getDotsBar(model.remainingPercentage)}`);
+        } else {
+          parts.push(`${indicator} ${emoji} ${shortName} ${this.getProgressBar(model.remainingPercentage)}`);
+        }
+      }
+    }
+
+    if (parts.length === 0) {
+      this.statusBarItem.text = this.localizationService.t('status.error');
+      this.statusBarItem.backgroundColor = undefined;
+      this.statusBarItem.tooltip = this.localizationService.t('tooltip.error');
+    } else {
+      const displayText = parts.join('  ');
+      this.statusBarItem.text = displayText;
+      this.statusBarItem.backgroundColor = undefined;
+      this.statusBarItem.color = undefined;
+      this.updateTooltip(snapshot);
+    }
   }
 
   /**
@@ -484,6 +567,8 @@ export class StatusBarService {
       }
       this.statusBarItem.text = newText;
     }
+    // 清除过时标记，允许后续重新添加
+    this.hasStaleWarning = false;
   }
 
   show(): void {
