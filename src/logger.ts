@@ -110,12 +110,19 @@ export class Logger {
    * 格式化日志消息
    */
   private formatMessage(level: LogLevel, tag: string, message: string, ...args: any[]): string {
-    const timestamp = new Date().toISOString();
+    const timestamp = this.getTimestamp();
     const levelName = LOG_LEVEL_NAMES[level];
     const formattedArgs = args.length > 0 ? ' ' + args.map(arg => 
       typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
     ).join(' ') : '';
     return `[${timestamp}] [${levelName}] [${tag}] ${message}${formattedArgs}`;
+  }
+
+  /**
+   * 统一生成时间戳（ISO8601）
+   */
+  private getTimestamp(): string {
+    return new Date().toISOString();
   }
 
   /**

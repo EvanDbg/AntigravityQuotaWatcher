@@ -250,10 +250,10 @@ export class GoogleAuthService {
             return true;
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
-            logger.error('GoogleAuth', `Login failed: ${errorMessage}`);
-            if (e instanceof Error && e.stack) {
-                logger.debug('GoogleAuth', `Stack: ${e.stack}`);
-            }
+            logger.error('GoogleAuth', 'Login failed', {
+                message: errorMessage,
+                stack: e instanceof Error ? e.stack : undefined
+            });
             this.lastError = errorMessage;
             this.setState(AuthState.ERROR);
             vscode.window.showErrorMessage(LocalizationService.getInstance().t('login.error.google', { error: errorMessage }));
@@ -446,23 +446,28 @@ export class GoogleAuthService {
                     try {
                         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
                             const response = JSON.parse(data) as UserInfoResponse;
-                            logger.info('GoogleAuth', `User info fetched, email: ${response.email}`);
+                            logger.info('GoogleAuth', 'User info fetched', { email: response.email });
                             // 缓存邮箱
                             this.userEmail = response.email;
                             resolve(response);
                         } else {
-                            logger.error('GoogleAuth', `Failed to fetch user info: ${res.statusCode} - ${data}`);
-                            reject(new Error(`Failed to fetch user info: ${res.statusCode} - ${data}`));
+                            const preview = data.substring(0, 200);
+                            logger.error('GoogleAuth', 'Failed to fetch user info', {
+                                status: res.statusCode,
+                                bodyPreview: preview
+                            });
+                            reject(new Error(`Failed to fetch user info: ${res.statusCode} - ${preview}`));
                         }
                     } catch (e) {
-                        logger.error('GoogleAuth', `Failed to parse user info response: ${data}`);
-                        reject(new Error(`Failed to parse user info response: ${data}`));
+                        const preview = data.substring(0, 200);
+                        logger.error('GoogleAuth', 'Failed to parse user info response', { bodyPreview: preview });
+                        reject(new Error(`Failed to parse user info response: ${preview}`));
                     }
                 });
             });
 
             req.on('error', (e) => {
-                logger.error('GoogleAuth', `User info request error: ${e.message}`);
+                logger.error('GoogleAuth', 'User info request error', { message: e.message });
                 reject(e);
             });
 
@@ -506,7 +511,10 @@ export class GoogleAuthService {
             this.setState(AuthState.AUTHENTICATED);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
-            logger.error('GoogleAuth', `Token refresh failed: ${errorMessage}`);
+            logger.error('GoogleAuth', 'Token refresh failed', {
+                message: errorMessage,
+                stack: e instanceof Error ? e.stack : undefined
+            });
             this.lastError = errorMessage;
             this.setState(this.classifyRefreshFailure(e));
             throw e;

@@ -58,8 +58,8 @@ export class ProcessPortDetector {
         const command = this.platformStrategy.getProcessListCommand(this.processName);
         logger.debug('PortDetector', `Running command: ${command}`);
         const { stdout } = await execAsync(command, { timeout: 15000 });
-        const preview = stdout.trim().split('\n').slice(0, 3).join('\n');
-        logger.debug('PortDetector', `Command output preview:\n${preview || '(empty)'}`);
+        const preview = stdout.trim().split('\n').slice(0, 3).join(' | ');
+        logger.debug('PortDetector', `Command output preview: ${preview || '(empty)'}`);
 
         // Parse process info using platform-specific parser
         const processInfo = this.platformStrategy.parseProcessInfo(stdout);
@@ -133,11 +133,7 @@ export class ProcessPortDetector {
       }
     }
 
-    logger.error('PortDetector', `All ${maxRetries} attempts failed`);
-    logger.error('PortDetector', 'Please ensure:');
-    errorMessages.requirements.forEach((req, index) => {
-      logger.error('PortDetector', `  ${index + 1}. ${req}`);
-    });
+    logger.error('PortDetector', `All ${maxRetries} attempts failed; requirements=${errorMessages.requirements.join(' | ')}`);
 
     return null;
   }
@@ -153,7 +149,8 @@ export class ProcessPortDetector {
       const command = this.platformStrategy.getPortListCommand(pid);
       logger.debug('PortDetector', `Running port list command for PID ${pid}: ${command}`);
       const { stdout } = await execAsync(command, { timeout: 3000 });
-      logger.debug('PortDetector', `Port list output preview:\n${stdout.trim().split('\n').slice(0, 5).join('\n') || '(empty)'}`);
+      const portPreview = stdout.trim().split('\n').slice(0, 5).join(' | ');
+      logger.debug('PortDetector', `Port list output preview: ${portPreview || '(empty)'}`);
 
       // Parse ports using platform-specific parser
       const ports = this.platformStrategy.parseListeningPorts(stdout);

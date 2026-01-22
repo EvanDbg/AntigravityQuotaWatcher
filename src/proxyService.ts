@@ -47,7 +47,7 @@ export class ProxyService {
         this.watchConfigChanges();
         logger.info('ProxyService', `Initialized: enabled=${this.config.enabled}, autoDetect=${this.config.autoDetect}, url=${this.config.url || '(empty)'}`);
         
-        // 输出详细的初始化调试信息
+        // 输出初始化调试信息（单行聚合）
         this.logProxyDebugInfo('Initialization');
     }
 
@@ -56,28 +56,24 @@ export class ProxyService {
      * @param context 调用上下文描述
      */
     private logProxyDebugInfo(context: string): void {
-        logger.debug('ProxyService', `=== Proxy Debug Info [${context}] ===`);
-        logger.debug('ProxyService', `Config - enabled: ${this.config.enabled}`);
-        logger.debug('ProxyService', `Config - autoDetect: ${this.config.autoDetect}`);
-        logger.debug('ProxyService', `Config - url: "${this.config.url || '(not set)'}"`);
-        
-        // 记录所有代理相关的环境变量（合并为一行）
         const envVars = [
-            `HTTPS_PROXY="${process.env.HTTPS_PROXY || '(not set)'}"`,
-            `https_proxy="${process.env.https_proxy || '(not set)'}"`,
-            `HTTP_PROXY="${process.env.HTTP_PROXY || '(not set)'}"`,
-            `http_proxy="${process.env.http_proxy || '(not set)'}"`,
-            `ALL_PROXY="${process.env.ALL_PROXY || '(not set)'}"`,
-            `all_proxy="${process.env.all_proxy || '(not set)'}"`,
-            `NO_PROXY="${process.env.NO_PROXY || '(not set)'}"`,
-            `no_proxy="${process.env.no_proxy || '(not set)'}"`
+            `HTTPS_PROXY=${process.env.HTTPS_PROXY || process.env.https_proxy || '(not set)'}`,
+            `HTTP_PROXY=${process.env.HTTP_PROXY || process.env.http_proxy || '(not set)'}`,
+            `ALL_PROXY=${process.env.ALL_PROXY || process.env.all_proxy || '(not set)'}`,
+            `NO_PROXY=${process.env.NO_PROXY || '(not set)'}`,
+            `no_proxy=${process.env.no_proxy || '(not set)'}`
         ].join(', ');
-        logger.debug('ProxyService', `Env: ${envVars}`);
-        
-        // 计算并记录有效的代理 URL
-        const effectiveUrl = this.getEffectiveProxyUrlInternal();
-        logger.debug('ProxyService', `Effective proxy URL: "${effectiveUrl || '(none)'}"`);
-        logger.debug('ProxyService', `=== End Proxy Debug Info ===`);
+
+        const summary = {
+            context,
+            enabled: this.config.enabled,
+            autoDetect: this.config.autoDetect,
+            url: this.config.url || '(not set)',
+            env: envVars,
+            effectiveUrl: this.getEffectiveProxyUrlInternal() || '(none)',
+        };
+
+        logger.debug('ProxyService', 'Proxy debug', summary);
     }
 
     /**

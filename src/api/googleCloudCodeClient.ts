@@ -94,13 +94,8 @@ export class GoogleCloudCodeClient {
      * @returns ProjectInfo
      */
     public async loadProjectInfo(accessToken: string): Promise<ProjectInfo> {
-        logger.debug('GoogleAPI', 'loadProjectInfo: Sending request...');
-        const requestBody = {
-            metadata: {
-                ideType: 'ANTIGRAVITY'
-            }
-        };
-        logger.debug('GoogleAPI', 'loadProjectInfo: Request body:', JSON.stringify(requestBody));
+        const requestBody = { metadata: { ideType: 'ANTIGRAVITY' } };
+        logger.debug('GoogleAPI', 'loadProjectInfo: Sending request', requestBody);
 
         const response = await this.makeApiRequest(
             LOAD_CODE_ASSIST_PATH,
@@ -121,7 +116,7 @@ export class GoogleCloudCodeClient {
             projectId: response.cloudaicompanionProject || '',
             tier: tier,
         };
-        logger.debug('GoogleAPI', 'loadProjectInfo: Parsed result:', JSON.stringify(result));
+        logger.debug('GoogleAPI', 'loadProjectInfo: Parsed result', result);
 
         return result;
     }
@@ -143,7 +138,7 @@ export class GoogleCloudCodeClient {
 
         // 如果 projectId 为空，不传 project 字段
         const body: any = projectId ? { project: projectId } : {};
-        logger.debug('GoogleAPI', 'fetchModelsQuota: Request body:', JSON.stringify(body));
+        logger.debug('GoogleAPI', 'fetchModelsQuota: Request body', body);
 
         const response = await this.makeApiRequest(
             FETCH_AVAILABLE_MODELS_PATH,
@@ -158,9 +153,11 @@ export class GoogleCloudCodeClient {
         // 注意: models 是一个对象映射，不是数组！
         const modelsMap = response.models || {};
         const modelNames = Object.keys(modelsMap);
-        logger.debug('GoogleAPI', 'fetchModelsQuota: Found models:', modelNames.join(', '));
+        logger.debug('GoogleAPI', `fetchModelsQuota: Found models (${modelNames.length})`, modelNames);
 
         const models: ModelQuotaFromApi[] = [];
+        const filteredByName: string[] = [];
+        const filteredByVersion: string[] = [];
 
         // 过滤条件：只保留包含 gemini、claude 或 gpt 的模型
         const allowedModelPatterns = /gemini|claude|gpt/i;
@@ -168,13 +165,13 @@ export class GoogleCloudCodeClient {
         for (const [modelName, modelInfo] of Object.entries(modelsMap)) {
             // 过滤模型名称
             if (!allowedModelPatterns.test(modelName)) {
-                logger.debug('GoogleAPI', `fetchModelsQuota: Model "${modelName}" filtered out (not gemini/claude/gpt)`);
+                filteredByName.push(modelName);
                 continue;
             }
 
             // 过滤旧版本 Gemini 模型 (< 3.0)
             if (!this.isModelVersionSupported(modelName)) {
-                logger.debug('GoogleAPI', `fetchModelsQuota: Model "${modelName}" filtered out (Gemini version < 3.0)`);
+                filteredByVersion.push(modelName);
                 continue;
             }
 
@@ -190,7 +187,14 @@ export class GoogleCloudCodeClient {
             }
         }
 
-        logger.debug('GoogleAPI', 'fetchModelsQuota: Total models with quota:', models.length);
+        if (filteredByName.length > 0 || filteredByVersion.length > 0) {
+            logger.debug('GoogleAPI', 'fetchModelsQuota: Filtered out models', {
+                byName: filteredByName,
+                byVersion: filteredByVersion,
+            });
+        }
+
+        logger.debug('GoogleAPI', 'fetchModelsQuota: Total models with quota', { count: models.length });
         return { models };
     }
 
@@ -255,10 +259,14 @@ export class GoogleCloudCodeClient {
                 return await this.doRequest(path, accessToken, body);
             } catch (e) {
                 lastError = e as Error;
-                logger.error('GoogleAPI', `makeApiRequest: Attempt ${attempt + 1} failed:`, lastError.message);
+                logger.error('GoogleAPI', `makeApiRequest: Attempt ${attempt + 1} failed`, { message: lastError.message });
 
                 if (e instanceof GoogleApiError) {
-                    logger.debug('GoogleAPI', `makeApiRequest: GoogleApiError - status: ${e.statusCode}, retryable: ${e.isRetryable()}, needsReauth: ${e.needsReauth()}`);
+                    logger.debug('GoogleAPI', 'makeApiRequest: GoogleApiError', {
+                        status: e.statusCode,
+                        retryable: e.isRetryable(),
+                        needsReauth: e.needsReauth(),
+                    });
                     // 不可重试的错误直接抛出
                     if (!e.isRetryable()) {
                         logger.debug('GoogleAPI', 'makeApiRequest: Error is not retryable, throwing');

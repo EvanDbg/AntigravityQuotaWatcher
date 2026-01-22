@@ -226,7 +226,11 @@ export async function activate(context: vscode.ExtensionContext) {
         const result = await portDetectionService?.detectPort();
 
         if (result && result.port && result.csrfToken) {
-          logger.info('Extension', 'detectPort command succeeded:', result);
+          logger.info('Extension', 'detectPort succeeded', {
+            connectPort: result.connectPort,
+            httpPort: result.httpPort,
+            csrf: result.csrfToken ? '[present]' : '[missing]'
+          });
           // 如果之前没有 quotaService,需要初始化
           if (!quotaService) {
             quotaService = new QuotaService(result.port, result.csrfToken, result.httpPort);
@@ -291,10 +295,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
-        logger.error('Extension', 'Port detection failed:', errorMsg);
-        if (error?.stack) {
-          logger.error('Extension', 'Stack:', error.stack);
-        }
+        logger.error('Extension', 'Port detection failed', { message: errorMsg, stack: error?.stack });
         vscode.window.showErrorMessage(localizationService.t('notify.portDetectionFailed', { error: errorMsg }));
       }
     }

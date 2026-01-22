@@ -52,7 +52,9 @@ async function makeRequest(
       timeout: config.timeout ?? 5000
     };
 
-    logger.debug('QuotaService', `Request URL: ${useHttps ? 'https' : 'http'}://127.0.0.1:${targetPort}${config.path}`);
+    logger.debug('QuotaService', 'Request URL', {
+      url: `${useHttps ? 'https' : 'http'}://127.0.0.1:${targetPort}${config.path}`
+    });
 
     const client = useHttps ? https : http;
     const req = client.request(options, (res) => {
@@ -91,7 +93,7 @@ async function makeRequest(
     const msg = (error?.message || '').toLowerCase();
     const shouldRetryHttp = httpPort !== undefined && (error.code === 'EPROTO' || msg.includes('wrong_version_number'));
     if (shouldRetryHttp) {
-      logger.warn('QuotaService', 'HTTPS failed; trying HTTP fallback port:', httpPort);
+      logger.warn('QuotaService', 'HTTPS failed; trying HTTP fallback port', { httpPort });
       return await doRequest(false, httpPort);
     }
     throw error;
@@ -498,7 +500,7 @@ export class QuotaService {
   }
 
   private async makeGetUserStatusRequest(): Promise<any> {
-    logger.debug('QuotaService', 'Using CSRF token:', this.csrfToken ? '[present]' : '[missing]');
+    logger.debug('QuotaService', 'Using CSRF token', { csrf: this.csrfToken ? '[present]' : '[missing]' });
     return makeRequest(
       {
         path: this.GET_USER_STATUS_PATH,
