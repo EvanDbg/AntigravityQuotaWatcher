@@ -201,6 +201,30 @@
 
 </details>
 
+## 代理设置
+
+<details>
+<summary>点击展开</summary>
+
+适用于未开启tun模式，使用proxifer对antigravity代理的类似用户。
+首先需要明确的是，antigravity内置代理支持功能，可通过 `http.proxySupport` 设置控制：
+
+| 设置值 | 说明 |
+|--------|------|
+| `override`| **自动使用操作系统的代理设置**。如果你已经在代理软件中设置了系统代理，antigravity 会自动检测并使用，无需额外配置。 |
+| `on` | 使用 `http.proxy` 中手动配置的代理 |
+| `fallback` | 先尝试直连，失败后使用代理 |
+| `off` | 完全不使用代理 |
+
+**插件会自动继承 antigravity 的代理设置**。如果你的 antigravity 已经能正常通过代理访问网络，本插件也会自动使用相同的代理，无需额外配置。
+
+特殊情况下，如果需要为本插件单独配置代理，可以使用插件单独的代理配置功能：
+**使用环境变量代理**：启用 `proxyEnabled` 和 `proxyAutoDetect`，插件会自动读取 `HTTPS_PROXY` 或 `HTTP_PROXY` 环境变量
+或者
+**手动指定代理**：启用 `proxyEnabled`，然后填写 `proxyUrl`
+
+</details>
+
 ## 注意事项
 
 - 首次启动会延迟 8 秒开始监控，避免频繁请求

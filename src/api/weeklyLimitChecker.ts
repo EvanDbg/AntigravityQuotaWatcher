@@ -10,6 +10,7 @@
 
 import * as https from 'https';
 import { logger } from '../logger';
+import { ProxyService } from '../proxyService';
 
 // Antigravity Chat API 端点 (用于触发配额检测)
 const CHAT_API_BASE = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
@@ -401,12 +402,16 @@ export class WeeklyLimitChecker {
             const url = new URL(CHAT_API_BASE);
             const requestType = normalized.model.toLowerCase().includes('image') ? 'image_gen' : 'agent';
 
+            // 获取代理 Agent（如果配置了代理）
+            const proxyAgent = ProxyService.getInstance().getAgentForHost(url.hostname);
+
             const options: https.RequestOptions = {
                 hostname: url.hostname,
                 port: 443,
                 path: STREAM_GENERATE_PATH,
                 method: 'POST',
                 timeout: API_TIMEOUT_MS,
+                agent: proxyAgent,  // 添加代理 agent 支持
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(postData),

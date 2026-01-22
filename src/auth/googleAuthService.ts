@@ -19,6 +19,7 @@ import { TokenStorage, TokenData } from './tokenStorage';
 import { CallbackServer } from './callbackServer';
 import { LocalizationService } from '../i18n/localizationService';
 import { logger } from '../logger';
+import { ProxyService } from '../proxyService';
 
 /**
  * 认证状态枚举
@@ -272,15 +273,15 @@ export class GoogleAuthService {
      * @returns 是否实际执行了登出操作（之前是否已登录）
      */
     public async logout(): Promise<boolean> {
-        const wasAuthenticated = this.currentState === AuthState.AUTHENTICATED || 
-                                  this.currentState === AuthState.TOKEN_EXPIRED ||
-                                  this.currentState === AuthState.REFRESHING;
-        
+        const wasAuthenticated = this.currentState === AuthState.AUTHENTICATED ||
+            this.currentState === AuthState.TOKEN_EXPIRED ||
+            this.currentState === AuthState.REFRESHING;
+
         await this.tokenStorage.clearToken();
         this.userEmail = undefined;
         this.lastError = undefined;
         this.setState(AuthState.NOT_AUTHENTICATED);
-        
+
         return wasAuthenticated;
     }
 
@@ -420,11 +421,15 @@ export class GoogleAuthService {
     public async fetchUserInfo(accessToken: string): Promise<UserInfoResponse> {
         logger.debug('GoogleAuth', 'Fetching user info...');
         return new Promise((resolve, reject) => {
+            // 获取代理 Agent（如果配置了代理）
+            const proxyAgent = ProxyService.getInstance().getAgentForHost('www.googleapis.com');
+
             const options: https.RequestOptions = {
                 hostname: 'www.googleapis.com',
                 port: 443,
                 path: '/oauth2/v2/userinfo',
                 method: 'GET',
+                agent: proxyAgent,  // 添加代理 agent 支持
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                 },
@@ -596,11 +601,15 @@ export class GoogleAuthService {
             const postData = params.toString();
             const url = new URL(GOOGLE_TOKEN_ENDPOINT);
 
+            // 获取代理 Agent（如果配置了代理）
+            const proxyAgent = ProxyService.getInstance().getAgentForHost(url.hostname);
+
             const options: https.RequestOptions = {
                 hostname: url.hostname,
                 port: 443,
                 path: url.pathname,
                 method: 'POST',
+                agent: proxyAgent,  // 添加代理 agent 支持
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'Content-Length': Buffer.byteLength(postData),

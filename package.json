@@ -170,6 +170,24 @@
           ],
           "description": "%config.logLevel%",
           "order": 90
+        },
+        "antigravityQuotaWatcher.proxyEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.proxyEnabled%",
+          "order": 100
+        },
+        "antigravityQuotaWatcher.proxyAutoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.proxyAutoDetect%",
+          "order": 101
+        },
+        "antigravityQuotaWatcher.proxyUrl": {
+          "type": "string",
+          "default": "",
+          "description": "%config.proxyUrl%",
+          "order": 102
         }
       }
     }
@@ -194,6 +212,7 @@
   },
   "dependencies": {
     "https": "^1.0.0",
+    "https-proxy-agent": "^7.0.6",
     "sql.js": "^1.10.2"
   },
   "repository": {

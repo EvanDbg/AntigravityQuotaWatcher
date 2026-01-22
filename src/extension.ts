@@ -14,6 +14,7 @@ import { registerDevCommands } from './devTools';
 import { GoogleAuthService, AuthState, AuthStateInfo, extractRefreshTokenFromAntigravity, hasAntigravityDb, TokenSyncChecker } from './auth';
 import { logger } from './logger';
 import { WebviewPanelService, DashboardState } from './webviewPanel';
+import { ProxyService } from './proxyService';
 
 const NON_AG_PROMPT_KEY = 'nonAgSwitchPromptDismissed';
 
@@ -55,6 +56,10 @@ export async function activate(context: vscode.ExtensionContext) {
   // Initialize localization
   const localizationService = LocalizationService.getInstance();
   localizationService.setLanguage(config.language);
+
+  // Initialize proxy service
+  const proxyService = ProxyService.getInstance();
+  proxyService.initialize();
 
   const isAntigravityIde = versionInfo.isAntigravityIde();
 
