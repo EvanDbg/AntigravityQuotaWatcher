@@ -45,10 +45,40 @@ export class ProxyService {
     public initialize(): void {
         this.loadConfig();
         this.watchConfigChanges();
-        logger.info('ProxyService', `Initialized: enabled=${this.config.enabled}, autoDetect=${this.config.autoDetect}, url=${this.config.url || '(empty)'}`);
-        
+        logger.info('ProxyService', `Initialized: enabled=${this.config.enabled}, autoDetect=${this.config.autoDetect}, url=${this.sanitizeProxyUrl(this.config.url || '(empty)')}`);
         // 输出初始化调试信息（单行聚合）
         this.logProxyDebugInfo('Initialization');
+    }
+
+    /**
+     * 脱敏处理代理 URL（隐藏凭据信息）
+     * @param url 原始代理 URL
+     * @returns 脱敏后的 URL
+     */
+    private sanitizeProxyUrl(url: string | undefined): string {
+        if (!url || url === '(not set)' || url === '(none)') {
+            return url || '(not set)';
+        }
+
+        try {
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname.toLowerCase();
+
+            // 如果是本地地址，直接返回完整 URL
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+                return url;
+            }
+
+            // 非本地地址，脱敏处理
+            if (urlObj.username || urlObj.password) {
+                urlObj.username = '***';
+                urlObj.password = '***';
+            }
+            return urlObj.toString();
+        } catch (error) {
+            // URL 解析失败，返回脱敏标记
+            return '(invalid URL format)';
+        }
     }
 
     /**
@@ -56,10 +86,15 @@ export class ProxyService {
      * @param context 调用上下文描述
      */
     private logProxyDebugInfo(context: string): void {
+        const sanitizeEnvVar = (value: string | undefined): string => {
+            if (!value) { return '(not set)'; }
+            return this.sanitizeProxyUrl(value);
+        };
+
         const envVars = [
-            `HTTPS_PROXY=${process.env.HTTPS_PROXY || process.env.https_proxy || '(not set)'}`,
-            `HTTP_PROXY=${process.env.HTTP_PROXY || process.env.http_proxy || '(not set)'}`,
-            `ALL_PROXY=${process.env.ALL_PROXY || process.env.all_proxy || '(not set)'}`,
+            `HTTPS_PROXY=${sanitizeEnvVar(process.env.HTTPS_PROXY || process.env.https_proxy)}`,
+            `HTTP_PROXY=${sanitizeEnvVar(process.env.HTTP_PROXY || process.env.http_proxy)}`,
+            `ALL_PROXY=${sanitizeEnvVar(process.env.ALL_PROXY || process.env.all_proxy)}`,
             `NO_PROXY=${process.env.NO_PROXY || '(not set)'}`,
             `no_proxy=${process.env.no_proxy || '(not set)'}`
         ].join(', ');
@@ -68,9 +103,9 @@ export class ProxyService {
             context,
             enabled: this.config.enabled,
             autoDetect: this.config.autoDetect,
-            url: this.config.url || '(not set)',
+            url: this.sanitizeProxyUrl(this.config.url || '(not set)'),
             env: envVars,
-            effectiveUrl: this.getEffectiveProxyUrlInternal() || '(none)',
+            effectiveUrl: this.sanitizeProxyUrl(this.getEffectiveProxyUrlInternal() || '(none)'),
         };
 
         logger.debug('ProxyService', 'Proxy debug', summary);
@@ -119,13 +154,13 @@ export class ProxyService {
         };
         
         // 记录配置加载详情
-        logger.debug('ProxyService', `loadConfig: proxyEnabled=${this.config.enabled}, proxyAutoDetect=${this.config.autoDetect}, proxyUrl="${this.config.url || '(empty)'}"`);
-        
+        logger.debug('ProxyService', `loadConfig: proxyEnabled=${this.config.enabled}, proxyAutoDetect=${this.config.autoDetect}, proxyUrl="${this.sanitizeProxyUrl(this.config.url || '(empty)')}"`);
+
         // 如果配置发生变化，记录变化详情
         if (oldConfig.enabled !== this.config.enabled ||
             oldConfig.autoDetect !== this.config.autoDetect ||
             oldConfig.url !== this.config.url) {
-            logger.debug('ProxyService', `Config changed: enabled ${oldConfig.enabled} -> ${this.config.enabled}, autoDetect ${oldConfig.autoDetect} -> ${this.config.autoDetect}, url "${oldConfig.url}" -> "${this.config.url}"`);
+            logger.debug('ProxyService', `Config changed: enabled ${oldConfig.enabled} -> ${this.config.enabled}, autoDetect ${oldConfig.autoDetect} -> ${this.config.autoDetect}, url "${this.sanitizeProxyUrl(oldConfig.url)}" -> "${this.sanitizeProxyUrl(this.config.url)}"`);
         }
         
         // 清除缓存的 Agent
@@ -164,36 +199,41 @@ export class ProxyService {
      */
     public detectSystemProxy(): string | undefined {
         logger.debug('ProxyService', 'detectSystemProxy: Starting system proxy detection...');
-        
-        // 记录所有代理相关环境变量的当前值（合并为一行）
+
+        // 记录所有代理相关环境变量的当前值（合并为一行，脱敏处理）
+        const sanitizeEnvVar = (value: string | undefined): string => {
+            if (!value) { return '(not set)'; }
+            return this.sanitizeProxyUrl(value);
+        };
+
         const envCheck = [
-            `HTTPS_PROXY="${process.env.HTTPS_PROXY || '(not set)'}"`,
-            `https_proxy="${process.env.https_proxy || '(not set)'}"`,
-            `HTTP_PROXY="${process.env.HTTP_PROXY || '(not set)'}"`,
-            `http_proxy="${process.env.http_proxy || '(not set)'}"`,
-            `ALL_PROXY="${process.env.ALL_PROXY || '(not set)'}"`,
-            `all_proxy="${process.env.all_proxy || '(not set)'}"`
+            `HTTPS_PROXY="${sanitizeEnvVar(process.env.HTTPS_PROXY)}"`,
+            `https_proxy="${sanitizeEnvVar(process.env.https_proxy)}"`,
+            `HTTP_PROXY="${sanitizeEnvVar(process.env.HTTP_PROXY)}"`,
+            `http_proxy="${sanitizeEnvVar(process.env.http_proxy)}"`,
+            `ALL_PROXY="${sanitizeEnvVar(process.env.ALL_PROXY)}"`,
+            `all_proxy="${sanitizeEnvVar(process.env.all_proxy)}"`
         ].join(', ');
         logger.debug('ProxyService', `detectSystemProxy: Env check: ${envCheck}`);
-        
+
         // 优先检测 HTTPS_PROXY
         const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
         if (httpsProxy) {
-            logger.info('ProxyService', `Detected system proxy from HTTPS_PROXY: ${httpsProxy}`);
+            logger.info('ProxyService', `Detected system proxy from HTTPS_PROXY: ${this.sanitizeProxyUrl(httpsProxy)}`);
             return httpsProxy;
         }
 
         // 其次检测 HTTP_PROXY
         const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
         if (httpProxy) {
-            logger.info('ProxyService', `Detected system proxy from HTTP_PROXY: ${httpProxy}`);
+            logger.info('ProxyService', `Detected system proxy from HTTP_PROXY: ${this.sanitizeProxyUrl(httpProxy)}`);
             return httpProxy;
         }
 
         // 检测 ALL_PROXY (通用代理)
         const allProxy = process.env.ALL_PROXY || process.env.all_proxy;
         if (allProxy) {
-            logger.info('ProxyService', `Detected system proxy from ALL_PROXY: ${allProxy}`);
+            logger.info('ProxyService', `Detected system proxy from ALL_PROXY: ${this.sanitizeProxyUrl(allProxy)}`);
             return allProxy;
         }
 
@@ -208,8 +248,8 @@ export class ProxyService {
      * @returns 代理 URL，如果没有代理返回 undefined
      */
     public getEffectiveProxyUrl(): string | undefined {
-        logger.debug('ProxyService', `getEffectiveProxyUrl: enabled=${this.config.enabled}, autoDetect=${this.config.autoDetect}, configuredUrl="${this.config.url || '(empty)'}"`);
-        
+        logger.debug('ProxyService', `getEffectiveProxyUrl: enabled=${this.config.enabled}, autoDetect=${this.config.autoDetect}, configuredUrl="${this.sanitizeProxyUrl(this.config.url || '(empty)')}"`);
+
         if (!this.config.enabled) {
             logger.debug('ProxyService', 'getEffectiveProxyUrl: Proxy is disabled, returning undefined');
             return undefined;
@@ -217,7 +257,7 @@ export class ProxyService {
 
         // 如果手动配置了代理 URL，优先使用
         if (this.config.url && this.config.url.trim() !== '') {
-            logger.debug('ProxyService', `getEffectiveProxyUrl: Using manually configured URL: ${this.config.url.trim()}`);
+            logger.debug('ProxyService', `getEffectiveProxyUrl: Using manually configured URL: ${this.sanitizeProxyUrl(this.config.url.trim())}`);
             return this.config.url.trim();
         }
 
@@ -226,7 +266,7 @@ export class ProxyService {
             logger.debug('ProxyService', 'getEffectiveProxyUrl: autoDetect is enabled, attempting to detect system proxy...');
             const detectedUrl = this.detectSystemProxy();
             if (detectedUrl) {
-                logger.debug('ProxyService', `getEffectiveProxyUrl: Auto-detected proxy URL: ${detectedUrl}`);
+                logger.debug('ProxyService', `getEffectiveProxyUrl: Auto-detected proxy URL: ${this.sanitizeProxyUrl(detectedUrl)}`);
             } else {
                 logger.debug('ProxyService', 'getEffectiveProxyUrl: Auto-detection enabled but no proxy found in environment');
             }
@@ -254,12 +294,12 @@ export class ProxyService {
 
         // 如果代理 URL 没变，返回缓存的 Agent
         if (this.cachedAgent && (this.cachedAgent as any)._proxyUrl === proxyUrl) {
-            logger.debug('ProxyService', `getHttpsAgent: Returning cached agent for URL: ${proxyUrl}`);
+            logger.debug('ProxyService', `getHttpsAgent: Returning cached agent for URL: ${this.sanitizeProxyUrl(proxyUrl)}`);
             return this.cachedAgent;
         }
 
         try {
-            logger.info('ProxyService', `getHttpsAgent: Creating new proxy agent for URL: ${proxyUrl}`);
+            logger.info('ProxyService', `getHttpsAgent: Creating new proxy agent for URL: ${this.sanitizeProxyUrl(proxyUrl)}`);
             const agent = new HttpsProxyAgent(proxyUrl);
             // 标记代理 URL 用于缓存判断
             (agent as any)._proxyUrl = proxyUrl;
@@ -292,7 +332,7 @@ export class ProxyService {
             return { success: false, message: '未配置代理或代理未启用' };
         }
 
-        logger.info('ProxyService', `testProxyConnection: Testing connection through proxy: ${proxyUrl}`);
+        logger.info('ProxyService', `testProxyConnection: Testing connection through proxy: ${this.sanitizeProxyUrl(proxyUrl)}`);
 
         return new Promise((resolve) => {
             const agent = this.getHttpsAgent();
