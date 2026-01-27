@@ -1151,6 +1151,7 @@ function handleConfigChange(config: Config): void {
       if (currentApiMethod === QuotaApiMethod.GOOGLE_API && newApiMethod !== QuotaApiMethod.GOOGLE_API) {
         logger.info('ConfigChange', 'Switching from GOOGLE_API to local API, need port detection');
         quotaService.stopPolling();
+        stopLocalTokenCheckTimer();
         statusBarService?.showDetecting();
 
         // 同步执行端口检测，确保完成后再返回
