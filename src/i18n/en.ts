@@ -26,7 +26,7 @@ export const en: TranslationMap = {
     'tooltip.clickToRetry': 'Click to retry',
     'tooltip.clickToLogin': 'Click to login with Google',
     'tooltip.clickToRelogin': 'Login expired, click to re-login',
-    'tooltip.staleWarning': '⚠️ Quota Data is outdated (network issue or Request imeout)',
+    'tooltip.staleWarning': '⚠️ Quota Data is outdated (network issue or Request timeout)',
 
     // Notifications (vscode.window.show*Message)
     'notify.unableToDetectProcess': 'Antigravity Quota Watcher: Unable to detect the Antigravity process.',
