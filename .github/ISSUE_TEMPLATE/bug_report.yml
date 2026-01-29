@@ -58,6 +58,8 @@ body:
           required: true
         - label: 我已经尝试过在插件配置中切换配额获取方式为 GOOGLE_API
           required: true
+        - label: 我了解什么是日志，并已将日志导出后粘贴或上传到下方的"运行日志"区域
+          required: true
 
   - type: textarea
     id: description
