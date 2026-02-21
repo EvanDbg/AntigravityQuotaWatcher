@@ -231,8 +231,10 @@ export class StatusBarService {
   private selectModelsToDisplay(models: ModelQuotaInfo[]): ModelQuotaInfo[] {
     const result: ModelQuotaInfo[] = [];
 
-    // 1. Claude (非 Thinking 版本) - 必须显示
-    const claude = models.find(model => this.isClaudeWithoutThinking(model.label));
+    // 1. Claude - 必须显示
+    // 优先选择非 Thinking 版本，如果没有则回退到 Thinking 版本
+    const claude = models.find(model => this.isClaudeWithoutThinking(model.label))
+      ?? models.find(model => model.label.toLowerCase().includes('claude'));
     if (claude) {
       result.push(claude);
     }
